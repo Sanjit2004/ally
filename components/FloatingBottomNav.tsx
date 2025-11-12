@@ -14,32 +14,25 @@ import {
   View,
 } from 'react-native';
 
-// --- FIX 1: Import the correct props type ---
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 
-// --- FIX 2: Create a lookup for your icons ---
-// This replaces the hard-coded NAV_ITEMS
 const TAB_ICONS: Record<string, string> = {
   chat: 'bubble.left.fill',
   CallScreen: 'phone.fill',
   profile: 'person.fill',
 };
 
-// --- FIX 3: Accept props from the navigator ---
 export default function FloatingBottomNav({ state, descriptors, navigation }: BottomTabBarProps) {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   
-  const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [translateY] = useState(new Animated.Value(0));
   const screenWidth = Dimensions.get('window').width;
   
-  // --- FIX 4: Get active tab index from navigator state ---
   const activeIndex = state.index;
 
   useEffect(() => {
     const keyboardDidShow = Keyboard.addListener('keyboardDidShow', () => {
-      setKeyboardVisible(true);
       Animated.timing(translateY, {
         toValue: 150,
         duration: 200,
@@ -48,7 +41,6 @@ export default function FloatingBottomNav({ state, descriptors, navigation }: Bo
     });
 
     const keyboardDidHide = Keyboard.addListener('keyboardDidHide', () => {
-      setKeyboardVisible(false);
       Animated.timing(translateY, {
         toValue: 0,
         duration: 200,
@@ -62,7 +54,6 @@ export default function FloatingBottomNav({ state, descriptors, navigation }: Bo
     };
   }, [translateY]);
 
-  // --- FIX 5: Use the correct navigation logic ---
   const handleTabPress = (routeName: string, isFocused: boolean) => {
     const event = navigation.emit({
       type: 'tabPress',
@@ -98,8 +89,9 @@ export default function FloatingBottomNav({ state, descriptors, navigation }: Bo
             },
           ]}
         >
-          {/* --- FIX 6: Map over state.routes from props --- */}
-          {state.routes.map((route, index) => {
+          {state.routes
+          .filter(route => ['chat', 'profile', 'CallScreen'].includes(route.name))
+          .map((route, index) => {
             const { options } = descriptors[route.key];
             const label =
               options.tabBarLabel !== undefined
@@ -109,10 +101,8 @@ export default function FloatingBottomNav({ state, descriptors, navigation }: Bo
                 : route.name;
 
             const isActive = activeIndex === index;
-            const iconName = TAB_ICONS[route.name] || 'circle.fill'; // Get icon from lookup
+            const iconName = TAB_ICONS[route.name] || 'circle.fill';
 
-            // ----- THIS IS THE CORRECTED LINE -----
-            // Don't render tabs that are hidden (href: null)
             if ((options as any).href === null) {
               return null;
             }
@@ -122,7 +112,6 @@ export default function FloatingBottomNav({ state, descriptors, navigation }: Bo
                 key={route.key}
                 style={[
                   styles.navItem,
-                  isActive && styles.navItemActive,
                 ]}
                 onPress={() => handleTabPress(route.name, isActive)}
                 activeOpacity={0.7}
@@ -212,6 +201,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   navBar: {
+    flex: 1,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -219,7 +209,6 @@ const styles = StyleSheet.create({
     borderRadius: 33,
     borderWidth: 1,
     paddingHorizontal: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.85)',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
@@ -233,9 +222,6 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     height: '100%',
     minWidth: 60,
-  },
-  navItemActive: {
-    // Active state styling handled via animated values
   },
   iconContainer: {
     alignItems: 'center',

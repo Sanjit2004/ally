@@ -71,7 +71,7 @@ const styles = StyleSheet.create({
   },
   messagesList: {
     padding: 20,
-    paddingBottom: 8,
+    paddingBottom: 120,
   },
   messageContainer: {
     marginBottom: 16,

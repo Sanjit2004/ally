@@ -138,7 +138,7 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
         <ThemedView style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colorScheme === 'dark' ? '#2a2a2a' : '#E5E7EB' }]}>
           <ThemedText type="title" style={styles.headerTitle}>Profile</ThemedText>
         </ThemedView>
