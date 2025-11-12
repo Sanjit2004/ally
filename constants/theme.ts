@@ -1,29 +1,53 @@
 /**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
+ * Warm, trustworthy, and emotionally intelligent color palette
+ * Theme: "soft purple dusk with amber glow"
  */
 
 import { Platform } from 'react-native';
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
+// Primary palette
+export const PrimaryColors = {
+  primary: '#6C63FF',      // soft lavender-indigo
+  secondary: '#A594F9',    // gentle purple
+  accent: '#F9A826',       // warm amber
+  background: '#F8F9FC',    // very light neutral
+  surface: '#FFFFFF',       // clean white
+  textPrimary: '#1E1E2E',   // deep slate
+  textSecondary: '#6B7280', // soft gray
+  success: '#4ADE80',       // natural green
+  error: '#F87171',         // muted coral
+};
+
+// Dark mode variants (tinted, not pure black/white)
+const tintColorLight = PrimaryColors.primary;
+const tintColorDark = PrimaryColors.secondary;
 
 export const Colors = {
   light: {
-    text: '#11181C',
-    background: '#fff',
-    tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
-    tabIconSelected: tintColorLight,
+    text: PrimaryColors.textPrimary,
+    background: PrimaryColors.background,
+    tint: PrimaryColors.primary,
+    secondary: PrimaryColors.secondary,
+    accent: PrimaryColors.accent,
+    surface: PrimaryColors.surface,
+    icon: PrimaryColors.textSecondary,
+    tabIconDefault: PrimaryColors.textSecondary,
+    tabIconSelected: PrimaryColors.primary,
+    success: PrimaryColors.success,
+    error: PrimaryColors.error,
   },
   dark: {
-    text: '#ECEDEE',
-    background: '#151718',
-    tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
-    tabIconSelected: tintColorDark,
+    text: '#E5E7EB',           // light gray (tinted)
+    background: '#1A1B23',     // dark slate (tinted, not pure black)
+    tint: PrimaryColors.secondary,
+    secondary: PrimaryColors.primary,
+    accent: PrimaryColors.accent,
+    surface: '#252631',        // dark surface (tinted)
+    icon: '#9CA3AF',
+    tabIconDefault: '#6B7280',
+    tabIconSelected: PrimaryColors.secondary,
+    success: PrimaryColors.success,
+    error: PrimaryColors.error,
   },
 };
 
