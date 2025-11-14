@@ -1,26 +1,25 @@
-import React, { useState, useEffect, useRef, ReactNode } from 'react';
-import {
-  StyleSheet,
-  View,
-  TouchableOpacity,
-  SafeAreaView,
-  Text,
-  ActivityIndicator,
-  Alert,
-} from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors, PrimaryColors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useUserProfileStore } from '@/store/userProfileStore';
-import { buildSystemPrompt } from '@/utils/systemPrompt';
-import { sendChatRequest } from '@/api/chat';
-import { updateMoodFromUserSentiment, getTTSParametersForMood, loadMoodState } from '@/utils/moodEngine';
-import { saveMessage } from '@/utils/conversationStorage';
 import { logMessageSent } from '@/utils/analytics';
-import * as Speech from 'expo-speech';
+import { saveMessage } from '@/utils/conversationStorage';
+import { getTTSParametersForMood, loadMoodState, updateMoodFromUserSentiment } from '@/utils/moodEngine';
+import { buildSystemPrompt } from '@/utils/systemPrompt';
 import { useNavigation } from '@react-navigation/native';
+import * as Speech from 'expo-speech';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  SafeAreaView,
+  StyleSheet,
+  TouchableOpacity,
+  View
+} from 'react-native';
+import { sendChatRequest } from '../../../api/chat';
 
 interface CallState {
   isActive: boolean;
@@ -59,6 +58,7 @@ export default function CallScreen() {
       if (waveAnimationInterval.current) clearInterval(waveAnimationInterval.current);
       Speech.stop?.();
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Update call duration

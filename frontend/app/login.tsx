@@ -184,7 +184,7 @@ export default function LoginScreen() {
 
             {/* Sign Up Link */}
             <View style={styles.footer}>
-              <ThemedText style={styles.footerText}>Don't have an account? </ThemedText>
+              <ThemedText style={styles.footerText}>Don&apos;t have an account? </ThemedText>
               <Link href="/signup" asChild>
                 <TouchableOpacity>
                   <ThemedText style={[styles.footerLink, { color: colors.tint }]}>

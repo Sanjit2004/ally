@@ -150,7 +150,7 @@ export default function OnboardingScreen() {
             </View>
             <ThemedText type="title" style={styles.title}>Welcome to Ally</ThemedText>
             <ThemedText style={styles.subtitle}>
-              Let's personalize your experience
+              Let&apos;s personalize your experience
             </ThemedText>
           </ThemedView>
 
@@ -276,7 +276,7 @@ export default function OnboardingScreen() {
                 autoCapitalize="none"
               />
               <ThemedText style={styles.hint}>
-                Topics you'd like Ally to be mindful of (optional)
+                Topics you&apos;d like Ally to be mindful of (optional)
               </ThemedText>
             </View>
 

@@ -1,4 +1,3 @@
-import { formatConversation, sendChatRequest } from '@/api/chat';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -27,6 +26,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { formatConversation, sendChatRequest } from '../../../api/chat';
 
 // NOTE: Styles are now defined *once* at the top.
 const styles = StyleSheet.create({
@@ -248,7 +248,6 @@ export default function ChatScreen() {
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const flatListRef = useRef<FlatList>(null);
-  const inputRef = useRef<TextInput>(null);
 
   // Load past conversations and set up notification listener
   useEffect(() => {
@@ -542,7 +541,7 @@ export default function ChatScreen() {
                 <IconSymbol name="bubble.left.and.bubble.right" size={40} color={colors.tint} />
               </View>
               <ThemedText style={styles.emptyText}>Start a conversation</ThemedText>
-              <ThemedText style={styles.emptySubtext}>I'm here to listen and support you</ThemedText>
+              <ThemedText style={styles.emptySubtext}>I&apos;m here to listen and support you</ThemedText>
             </View>
           }
         />

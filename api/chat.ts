@@ -1,5 +1,3 @@
-import Constants from 'expo-constants';
-
 /**
  * Chat API wrapper for communicating with the AI model
  * 
@@ -52,8 +50,8 @@ export async function sendChatRequest(
   memory?: string,
   therapistMode?: boolean
 ): Promise<ChatResponseWithMemory> {
-  const apiUrl = Constants.expoConfig?.extra?.MODEL_API_URL || process.env.MODEL_API_URL;
-  const apiKey = Constants.expoConfig?.extra?.MODEL_API_KEY || process.env.MODEL_API_KEY;
+  const apiUrl = process.env.MODEL_API_URL;
+  const apiKey = process.env.MODEL_API_KEY;
 
   // Dev mode: Return canned response if API key is missing
   if (!apiKey) {

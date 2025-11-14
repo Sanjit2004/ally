@@ -1,36 +1,31 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import { Colors, PrimaryColors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useUserProfileStore } from '@/store/userProfileStore';
+import { logMessageSent } from '@/utils/analytics';
+import { saveMessage } from '@/utils/conversationStorage';
+import { getTTSParametersForMood, loadMoodState, updateMoodFromUserSentiment } from '@/utils/moodEngine';
+import { buildSystemPrompt } from '@/utils/systemPrompt';
+import * as Speech from 'expo-speech';
+import LottieView from 'lottie-react-native';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-  StyleSheet,
-  View,
-  TouchableOpacity,
-  SafeAreaView,
-  TextInput,
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
+  SafeAreaView,
   ScrollView,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors, PrimaryColors } from '@/constants/theme';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { useUserProfileStore } from '@/store/userProfileStore';
-import { buildSystemPrompt } from '@/utils/systemPrompt';
-import { sendChatRequest } from '@/api/chat';
-import { saveMessage } from '@/utils/conversationStorage';
-import { updateMoodFromUserSentiment, getTTSParametersForMood, loadMoodState } from '@/utils/moodEngine';
-import { logMessageSent } from '@/utils/analytics';
-import * as Speech from 'expo-speech';
-import LottieView from 'lottie-react-native';
+import { sendChatRequest } from '../../../api/chat';
 
 type InteractionMode = 'text' | 'voice' | 'avatar';
-
-interface AvatarExpression {
-  mood: string;
-  animation: string;
-}
 
 export default function AvatarScreen() {
   const colorScheme = useColorScheme();
@@ -42,13 +37,7 @@ export default function AvatarScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [currentMood, setCurrentMood] = useState('neutral');
-  const [avatarExpression, setAvatarExpression] = useState<AvatarExpression>({
-    mood: 'neutral',
-    animation: 'idle',
-  });
   const [lastResponse, setLastResponse] = useState('');
-  const [useGPU, setUseGPU] = useState(true);
-  const lottieRef = useRef<LottieView>(null);
   const inputRef = useRef<TextInput>(null);
 
   useEffect(() => {
@@ -59,29 +48,8 @@ export default function AvatarScreen() {
     try {
       const mood = await loadMoodState();
       setCurrentMood(mood.currentMood);
-      setAvatarExpression({
-        mood: mood.currentMood,
-        animation: 'idle',
-      });
     } catch (error) {
       console.error('Error initializing avatar:', error);
-    }
-  };
-
-  const getMoodAnimation = (mood: string): string => {
-    switch (mood) {
-      case 'happy':
-        return 'happy_idle';
-      case 'energetic':
-        return 'energetic_idle';
-      case 'neutral':
-        return 'neutral_idle';
-      case 'calm':
-        return 'calm_idle';
-      case 'sad':
-        return 'sad_idle';
-      default:
-        return 'neutral_idle';
     }
   };
 
@@ -111,10 +79,6 @@ export default function AvatarScreen() {
       // Update mood based on user sentiment
       const moodState = await updateMoodFromUserSentiment(inputText);
       setCurrentMood(moodState.currentMood);
-      setAvatarExpression({
-        mood: moodState.currentMood,
-        animation: 'listening',
-      });
 
       // Save user message
       const userId = userProfile?.displayName || 'unknown';
@@ -143,12 +107,6 @@ export default function AvatarScreen() {
 
       setLastResponse(response.message);
 
-      // Update avatar expression to speaking
-      setAvatarExpression({
-        mood: moodState.currentMood,
-        animation: 'speaking',
-      });
-
       // Speak response
       const ttsParams = getTTSParametersForMood(moodState.currentMood);
       await Speech.speak(response.message, {
@@ -157,10 +115,6 @@ export default function AvatarScreen() {
         pitch: ttsParams.pitch,
         onDone: () => {
           setIsSpeaking(false);
-          setAvatarExpression({
-            mood: moodState.currentMood,
-            animation: 'idle',
-          });
         },
       });
 
@@ -169,10 +123,6 @@ export default function AvatarScreen() {
     } catch (error) {
       console.error('Error sending message:', error);
       Alert.alert('Error', 'Failed to process message');
-      setAvatarExpression({
-        mood: currentMood,
-        animation: 'idle',
-      });
     } finally {
       setIsLoading(false);
     }
@@ -229,29 +179,6 @@ export default function AvatarScreen() {
     </View>
   );
 
-  const LottieAvatar = () => (
-    <View style={styles.avatarContainer}>
-      <LottieView
-        ref={lottieRef}
-        source={require('@/assets/animations/ally-avatar-neutral.json')}
-        autoPlay
-        loop
-        style={styles.lottieAnimation}
-      />
-      <View style={styles.moodIndicator}>
-        <View
-          style={[
-            styles.moodDot,
-            { backgroundColor: getMoodColor(currentMood) },
-          ]}
-        />
-        <ThemedText style={styles.moodText}>
-          {currentMood.charAt(0).toUpperCase() + currentMood.slice(1)}
-        </ThemedText>
-      </View>
-    </View>
-  );
-
   const TextMode = () => (
     <View style={styles.modeContainer}>
       <ScrollView style={styles.responseContainer}>
@@ -269,7 +196,7 @@ export default function AvatarScreen() {
           <View style={styles.emptyResponse}>
             <IconSymbol name="bubble.left" size={40} color={PrimaryColors.textSecondary} />
             <ThemedText style={styles.emptyResponseText}>
-              Send a message to see Ally's response
+              Send a message to see Ally&apos;s response
             </ThemedText>
           </View>
         )}
@@ -359,7 +286,7 @@ export default function AvatarScreen() {
 
   const AvatarMode = () => (
     <View style={styles.modeContainer}>
-      {useGPU ? <LottieAvatar /> : <SimpleAvatarFallback />}
+      <SimpleAvatarFallback />
 
       <View style={styles.interactionArea}>
         {lastResponse && (
