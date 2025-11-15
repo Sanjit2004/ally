@@ -2,6 +2,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors, PrimaryColors } from '@/constants/theme';
+import { FLOATING_TAB_BAR_OFFSET } from '@/constants/layout';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useUserProfileStore } from '@/store/userProfileStore';
 import { logMessageSent } from '@/utils/analytics';
@@ -14,11 +15,11 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  SafeAreaView,
   StyleSheet,
   TouchableOpacity,
   View
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { sendChatRequest } from '../../../api/chat';
 
 interface CallState {
@@ -35,6 +36,9 @@ export default function CallScreen() {
   const colors = Colors[colorScheme ?? 'light'];
   const navigation = useNavigation();
   const { userProfile } = useUserProfileStore();
+  const insets = useSafeAreaInsets();
+  const bottomInset = Math.max(insets.bottom, 16);
+  const bottomPadding = bottomInset + FLOATING_TAB_BAR_OFFSET;
   
   const [callState, setCallState] = useState<CallState>({
     isActive: true,
@@ -232,7 +236,9 @@ export default function CallScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background, paddingBottom: bottomPadding }]}
+    > 
       <ThemedView style={styles.header}>
         <TouchableOpacity onPress={endCall}>
           <IconSymbol name="xmark.circle.fill" size={24} color={PrimaryColors.textSecondary} />
@@ -274,7 +280,7 @@ export default function CallScreen() {
       </ThemedView>
 
       {/* Controls */}
-      <View style={styles.controls}>
+      <View style={[styles.controls, { paddingBottom: bottomInset }]}> 
         <TouchableOpacity
           style={[
             styles.controlButton,

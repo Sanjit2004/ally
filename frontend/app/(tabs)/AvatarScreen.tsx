@@ -2,6 +2,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors, PrimaryColors } from '@/constants/theme';
+import { FLOATING_TAB_BAR_OFFSET } from '@/constants/layout';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useUserProfileStore } from '@/store/userProfileStore';
 import { logMessageSent } from '@/utils/analytics';
@@ -16,13 +17,13 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { sendChatRequest } from '../../../api/chat';
 
 type InteractionMode = 'text' | 'voice' | 'avatar';
@@ -31,6 +32,8 @@ export default function AvatarScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const { userProfile } = useUserProfileStore();
+  const insets = useSafeAreaInsets();
+  const bottomPadding = FLOATING_TAB_BAR_OFFSET + Math.max(insets.bottom, 16);
 
   const [mode, setMode] = useState<InteractionMode>('avatar');
   const [inputText, setInputText] = useState('');
@@ -129,7 +132,7 @@ export default function AvatarScreen() {
   };
 
   const SimpleAvatarFallback = () => (
-    <View style={[styles.avatarContainer, { backgroundColor: getMoodColor(currentMood) + '20' }]}>
+    <View style={[styles.avatarContainer, { backgroundColor: getMoodColor(currentMood) + '20' }]}> 
       <View
         style={[
           styles.avatarCircle,
@@ -180,8 +183,12 @@ export default function AvatarScreen() {
   );
 
   const TextMode = () => (
-    <View style={styles.modeContainer}>
-      <ScrollView style={styles.responseContainer}>
+    <View style={[styles.modeContainer, { paddingBottom: bottomPadding }]}>
+      <ScrollView
+        style={styles.responseContainer}
+        contentContainerStyle={{ paddingBottom: 24 }}
+        showsVerticalScrollIndicator={false}
+      >
         {lastResponse ? (
           <ThemedView
             style={[
@@ -245,7 +252,7 @@ export default function AvatarScreen() {
   );
 
   const VoiceMode = () => (
-    <View style={styles.modeContainer}>
+    <View style={[styles.modeContainer, { paddingBottom: bottomPadding }]}>
       <View style={styles.voiceContainer}>
         <ThemedText style={styles.voiceLabel}>Voice Mode</ThemedText>
         <ThemedText style={styles.voiceSubtext}>
@@ -285,7 +292,7 @@ export default function AvatarScreen() {
   );
 
   const AvatarMode = () => (
-    <View style={styles.modeContainer}>
+    <View style={[styles.modeContainer, { paddingBottom: bottomPadding }]}>
       <SimpleAvatarFallback />
 
       <View style={styles.interactionArea}>
@@ -347,7 +354,9 @@ export default function AvatarScreen() {
   );
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background, paddingBottom: bottomPadding }]}
+    >
       {/* Header */}
       <ThemedView
         style={[

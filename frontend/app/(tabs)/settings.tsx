@@ -1,29 +1,34 @@
-import React, { useState, useEffect } from 'react';
-import {
-  StyleSheet,
-  View,
-  Switch,
-  TouchableOpacity,
-  ScrollView,
-  Alert,
-  SafeAreaView,
-  Modal,
-} from 'react-native';
-import { router, useRouter } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors, PrimaryColors } from '@/constants/theme';
-import { useUserProfileStore } from '@/store/userProfileStore';
-import { clearMemories } from '@/store/memory';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { loadNotificationSchedule, updateNotificationFrequency, getFrequencyLabel, NotificationFrequency, scheduleProactiveNotifications } from '@/utils/proactiveNotifications';
+import { Colors, PrimaryColors } from '@/constants/theme';
+import { FLOATING_TAB_BAR_OFFSET } from '@/constants/layout';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useUserProfileStore } from '@/store/userProfileStore';
+import { getFrequencyLabel, loadNotificationSchedule, NotificationFrequency, scheduleProactiveNotifications, updateNotificationFrequency } from '@/utils/proactiveNotifications';
+import { router, useRouter } from 'expo-router';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  Alert,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function SettingsScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const navigation = useRouter();
   const { clearProfile, userProfile } = useUserProfileStore();
+  const insets = useSafeAreaInsets();
+  const bottomPadding = useMemo(
+    () => FLOATING_TAB_BAR_OFFSET + Math.max(insets.bottom, 16),
+    [insets.bottom],
+  );
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
@@ -149,8 +154,13 @@ export default function SettingsScreen() {
   );
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background, paddingBottom: bottomPadding }]}
+    >
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: bottomPadding }}
+      >
         <ThemedView style={[styles.header, {
           backgroundColor: colors.surface,
           borderBottomColor: colorScheme === 'dark' ? '#2a2a2a' : '#E5E7EB',
@@ -294,6 +304,7 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingBottom: 24,
   },
   header: {
     padding: 20,

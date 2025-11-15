@@ -2,6 +2,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { VoiceButton } from '@/components/VoiceButton';
+import { FLOATING_TAB_BAR_OFFSET } from '@/constants/layout';
 import { Colors, PrimaryColors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { addMemory, getMemories } from '@/store/memory';
@@ -26,6 +27,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { formatConversation, sendChatRequest } from '../../../api/chat';
 
 // NOTE: Styles are now defined *once* at the top.
@@ -70,8 +72,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   messagesList: {
-    padding: 20,
-    paddingBottom: 120,
+    padding: 10,
+    paddingBottom: FLOATING_TAB_BAR_OFFSET,
   },
   messageContainer: {
     marginBottom: 16,
@@ -153,7 +155,7 @@ const styles = StyleSheet.create({
     maxHeight: 120,
     paddingHorizontal: 12,
     paddingTop: 10,
-    paddingBottom: 10,
+    paddingBottom: 0,
     borderRadius: 20,
     marginRight: 8,
     fontSize: 16,
@@ -243,6 +245,8 @@ export default function ChatScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const bottomPadding = FLOATING_TAB_BAR_OFFSET + insets.bottom;
   const [ttsEnabled, setTtsEnabled] = useState(false);
   const [therapistMode, setTherapistMode] = useState(false);
   const [inputText, setInputText] = useState('');
@@ -314,6 +318,19 @@ export default function ChatScreen() {
       // Build system prompt from user profile with therapist mode
       const systemPrompt = await buildSystemPrompt(userProfile, therapistMode);
 
+      const personaInstruction = userProfile?.personaPrompt
+        ? `You are Ally, the user’s personal support assistant. Here is info about the user:
+${userProfile.personaPrompt}
+
+Always keep this context in mind.`
+        : undefined;
+
+      const fullSystemPrompt = personaInstruction
+        ? `${personaInstruction}
+
+${systemPrompt}`
+        : systemPrompt;
+
       // Get last 6 conversation messages (excluding the initial greeting)
       const recentMessages = messages.slice(-6);
       const conversation = formatConversation([
@@ -329,7 +346,7 @@ export default function ChatScreen() {
       const memoryContext = memory || undefined;
 
       // Call API with therapist mode flag
-      const response = await sendChatRequest(systemPrompt, conversation, memoryContext, therapistMode);
+      const response = await sendChatRequest(fullSystemPrompt, conversation, memoryContext, therapistMode);
 
       // Check for repetition in last 3 assistant replies
       const lastAssistantReplies = messages
@@ -533,7 +550,10 @@ export default function ChatScreen() {
           data={messages}
           renderItem={renderMessage}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.messagesList}
+          contentContainerStyle={[
+            styles.messagesList,
+            { paddingBottom: bottomPadding },
+          ]}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={styles.emptyState}>
@@ -547,10 +567,16 @@ export default function ChatScreen() {
         />
 
         {/* Modern Input Container */}
-        <ThemedView style={[styles.inputContainer, {
-          backgroundColor: 'transparent',
-          borderTopColor: 'transparent',
-        }]}>
+        <ThemedView
+          style={[
+            styles.inputContainer,
+            {
+              backgroundColor: 'transparent',
+              borderTopColor: 'transparent',
+              paddingBottom: bottomPadding,
+            },
+          ]}
+        >
           <View style={[styles.inputWrapper, {
             backgroundColor: colors.background,
             borderColor: colorScheme === 'dark' ? '#3a3a3a' : '#E5E7EB',

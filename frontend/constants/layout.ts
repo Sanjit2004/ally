@@ -1,0 +1,1 @@
+export const FLOATING_TAB_BAR_OFFSET = 40;

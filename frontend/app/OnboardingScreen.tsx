@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -10,15 +10,20 @@ import {
   SafeAreaView,
   Alert,
 } from 'react-native';
+import Slider from '@react-native-community/slider';
 import { router } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, PrimaryColors } from '@/constants/theme';
-import { useUserProfileStore, UserProfile } from '@/store/userProfileStore';
+import { useUserProfileStore } from '@/store/userProfileStore';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { scheduleCheckInNotification, requestNotificationPermissions } from '@/utils/notifications';
 import { logOnboardingCompleted } from '@/utils/analytics';
+import { generatePersonaPrompt, parseCommaSeparatedList } from '@/utils/persona';
+
+const SUPPORT_FOCUS_OPTIONS = ['Mental wellness', 'Productivity', 'Motivation', 'Relationships'];
+const ENCOURAGEMENT_OPTIONS: Array<'motivational' | 'practical' | 'humorous'> = ['motivational', 'practical', 'humorous'];
 
 export default function OnboardingScreen() {
   const [displayName, setDisplayName] = useState('');
@@ -26,11 +31,48 @@ export default function OnboardingScreen() {
   const [checkInFrequency, setCheckInFrequency] = useState<'daily' | 'every-other-day' | 'weekly'>('daily');
   const [mainGoal, setMainGoal] = useState('');
   const [sensitiveTopics, setSensitiveTopics] = useState('');
+  const [supportFocus, setSupportFocus] = useState<string[]>([]);
+  const [formality, setFormality] = useState<number>(3);
+  const [dailyChallenge, setDailyChallenge] = useState('');
+  const [interestsInput, setInterestsInput] = useState('');
+  const [encouragementStyle, setEncouragementStyle] = useState<'motivational' | 'practical' | 'humorous'>('motivational');
+  const [energyLevel, setEnergyLevel] = useState<number>(5);
+  const [energyTouched, setEnergyTouched] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const { saveProfile } = useUserProfileStore();
+
+  const formalityLabel = useMemo(() => {
+    switch (formality) {
+      case 1:
+        return 'Very casual';
+      case 2:
+        return 'Casual';
+      case 3:
+        return 'Balanced';
+      case 4:
+        return 'Polished';
+      case 5:
+        return 'Very formal';
+      default:
+        return 'Balanced';
+    }
+  }, [formality]);
+
+  const energyLabel = useMemo(() => {
+    if (!energyTouched) return 'Skip';
+    if (energyLevel <= 3) return 'Low';
+    if (energyLevel <= 7) return 'Steady';
+    return 'High';
+  }, [energyLevel, energyTouched]);
+
+  const toggleSupportFocus = (option: string) => {
+    setSupportFocus((prev) =>
+      prev.includes(option) ? prev.filter((item) => item !== option) : [...prev, option]
+    );
+  };
 
   const handleSubmit = async () => {
     // Validation
@@ -47,12 +89,38 @@ export default function OnboardingScreen() {
     setIsSubmitting(true);
 
     try {
-      const profile: UserProfile = {
-        displayName: displayName.trim(),
+      const trimmedName = displayName.trim();
+      const trimmedGoal = mainGoal.trim();
+      const trimmedSensitive = sensitiveTopics.trim();
+      const trimmedDaily = dailyChallenge.trim();
+      const parsedInterests = parseCommaSeparatedList(interestsInput);
+      const selectedSupportFocus = supportFocus.length > 0 ? supportFocus : undefined;
+      const personaPrompt = generatePersonaPrompt({
+        displayName: trimmedName,
+        preferredTone,
+        mainGoal: trimmedGoal,
+        sensitiveTopics: trimmedSensitive,
+        supportFocus: selectedSupportFocus,
+        formality,
+        dailyChallenge: trimmedDaily,
+        interests: parsedInterests,
+        encouragementStyle,
+        energyLevel: energyTouched ? energyLevel : undefined,
+      });
+
+      const profile = {
+        displayName: trimmedName,
         preferredTone,
         checkInFrequency,
-        mainGoal: mainGoal.trim(),
-        sensitiveTopics: sensitiveTopics.trim(),
+        mainGoal: trimmedGoal,
+        sensitiveTopics: trimmedSensitive || undefined,
+        supportFocus: selectedSupportFocus,
+        formality,
+        dailyChallenge: trimmedDaily || undefined,
+        interests: parsedInterests,
+        encouragementStyle,
+        energyLevel: energyTouched ? energyLevel : undefined,
+        personaPrompt,
       };
 
       // Save to store (which saves to AsyncStorage)
@@ -280,6 +348,175 @@ export default function OnboardingScreen() {
               </ThemedText>
             </View>
 
+            {/* Support Focus */}
+            <View style={styles.field}>
+              <ThemedText type="defaultSemiBold" style={styles.label}>
+                Support Focus Areas
+              </ThemedText>
+              <View style={styles.chipGroup}>
+                {SUPPORT_FOCUS_OPTIONS.map((option) => {
+                  const selected = supportFocus.includes(option);
+                  return (
+                    <TouchableOpacity
+                      key={option}
+                      style={[
+                        styles.chip,
+                        {
+                          borderColor: selected ? colors.tint : colorScheme === 'dark' ? '#3a3a3a' : '#E5E7EB',
+                          backgroundColor: selected ? colors.tint + '15' : 'transparent',
+                        },
+                      ]}
+                      onPress={() => toggleSupportFocus(option)}
+                      activeOpacity={0.7}
+                    >
+                      <ThemedText
+                        style={[
+                          styles.chipLabel,
+                          { color: selected ? colors.tint : colors.text },
+                        ]}
+                      >
+                        {option}
+                      </ThemedText>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+
+            {/* Communication Style Slider */}
+            <View style={styles.field}>
+              <ThemedText type="defaultSemiBold" style={styles.label}>
+                Communication Style
+              </ThemedText>
+              <ThemedText style={styles.sliderCaption}>
+                {formalityLabel} ({formality}/5)
+              </ThemedText>
+              <Slider
+                value={formality}
+                minimumValue={1}
+                maximumValue={5}
+                step={1}
+                minimumTrackTintColor={colors.tint}
+                maximumTrackTintColor={colorScheme === 'dark' ? '#3a3a3a' : '#D1D5DB'}
+                thumbTintColor={colors.tint}
+                onValueChange={setFormality}
+              />
+            </View>
+
+            {/* Daily Challenge */}
+            <View style={styles.field}>
+              <ThemedText type="defaultSemiBold" style={styles.label}>
+                Daily Challenge
+              </ThemedText>
+              <TextInput
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colorScheme === 'dark' ? '#3a3a3a' : '#E5E7EB',
+                    color: colors.text,
+                  },
+                ]}
+                placeholder="What feels most challenging today?"
+                placeholderTextColor={PrimaryColors.textSecondary}
+                value={dailyChallenge}
+                onChangeText={setDailyChallenge}
+              />
+            </View>
+
+            {/* Hobbies & Interests */}
+            <View style={styles.field}>
+              <ThemedText type="defaultSemiBold" style={styles.label}>
+                Hobbies & Interests
+              </ThemedText>
+              <TextInput
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colorScheme === 'dark' ? '#3a3a3a' : '#E5E7EB',
+                    color: colors.text,
+                  },
+                ]}
+                placeholder="e.g., hiking, painting, podcasts"
+                placeholderTextColor={PrimaryColors.textSecondary}
+                value={interestsInput}
+                onChangeText={setInterestsInput}
+                autoCapitalize="words"
+              />
+              <ThemedText style={styles.hint}>
+                Comma-separated list (optional)
+              </ThemedText>
+            </View>
+
+            {/* Encouragement Style */}
+            <View style={styles.field}>
+              <ThemedText type="defaultSemiBold" style={styles.label}>
+                Preferred Encouragement Style
+              </ThemedText>
+              <View style={styles.selectGroup}>
+                {ENCOURAGEMENT_OPTIONS.map((option) => (
+                  <TouchableOpacity
+                    key={option}
+                    style={[
+                      styles.selectOption,
+                      encouragementStyle === option && {
+                        backgroundColor: colors.tint,
+                        borderColor: colors.tint,
+                      },
+                    ]}
+                    onPress={() => setEncouragementStyle(option)}
+                    activeOpacity={0.7}
+                  >
+                    <ThemedText
+                      style={[
+                        styles.selectLabel,
+                        encouragementStyle === option && { color: '#ffffff' },
+                      ]}
+                    >
+                      {option.charAt(0).toUpperCase() + option.slice(1)}
+                    </ThemedText>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {/* Energy Level */}
+            <View style={styles.field}>
+              <ThemedText type="defaultSemiBold" style={styles.label}>
+                Energy Level Today (optional)
+              </ThemedText>
+              <View style={styles.energyHeader}>
+                <ThemedText style={styles.energyLabel}>{energyLabel}</ThemedText>
+                {energyTouched && (
+                  <TouchableOpacity
+                    onPress={() => {
+                      setEnergyTouched(false);
+                      setEnergyLevel(5);
+                    }}
+                  >
+                    <ThemedText style={[styles.resetLink, { color: colors.tint }]}>Reset</ThemedText>
+                  </TouchableOpacity>
+                )}
+              </View>
+              <Slider
+                value={energyTouched ? energyLevel : 5}
+                minimumValue={1}
+                maximumValue={10}
+                step={1}
+                minimumTrackTintColor={colors.tint}
+                maximumTrackTintColor={colorScheme === 'dark' ? '#3a3a3a' : '#D1D5DB'}
+                thumbTintColor={colors.tint}
+                onValueChange={(value: number) => {
+                  setEnergyTouched(true);
+                  setEnergyLevel(value);
+                }}
+              />
+              {energyTouched && (
+                <ThemedText style={styles.energyValue}>{energyLevel} / 10</ThemedText>
+              )}
+            </View>
+
             {/* Submit Button */}
             <TouchableOpacity
               style={[
@@ -374,6 +611,26 @@ const styles = StyleSheet.create({
     opacity: 0.6,
     marginTop: 6,
   },
+  chipGroup: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  chip: {
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1.5,
+  },
+  chipLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  sliderCaption: {
+    fontSize: 14,
+    marginBottom: 8,
+    opacity: 0.7,
+  },
   radioGroup: {
     gap: 12,
   },
@@ -437,6 +694,25 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     letterSpacing: 0.5,
+  },
+  energyHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  energyLabel: {
+    fontSize: 14,
+    opacity: 0.7,
+  },
+  resetLink: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  energyValue: {
+    marginTop: 8,
+    fontSize: 13,
+    opacity: 0.7,
   },
 });
 

@@ -1,21 +1,22 @@
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from 'expo-router';
 import React, { useEffect, useRef } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  SafeAreaView,
   Animated,
   Dimensions,
+  SafeAreaView,
   ScrollView,
-  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
-import { useRouter } from 'expo-router';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors } from '@/constants/theme';
-import { IconSymbol } from '@/components/ui/icon-symbol';
 
 const { width, height } = Dimensions.get('window');
+const INTRO_SCREEN_KEY = '@ally_has_seen_intro';
 
 interface Feature {
   icon: string;
@@ -56,6 +57,8 @@ export default function GetStartedScreen() {
   const slideAnim = useRef(new Animated.Value(50)).current;
   const scaleAnim = useRef(new Animated.Value(0.9)).current;
   const floatAnim = useRef(new Animated.Value(0)).current;
+  const orbOneAnim = useRef(new Animated.Value(0)).current;
+  const orbTwoAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     // Main entrance animation
@@ -92,7 +95,45 @@ export default function GetStartedScreen() {
         }),
       ])
     ).start();
-  }, [fadeAnim, slideAnim, scaleAnim, floatAnim]);
+
+    // Background orb animations (subtle counter-rotating motion)
+    const createOrbLoop = (anim: Animated.Value, direction: 1 | -1) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(anim, {
+            toValue: direction * 1,
+            duration: 6000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(anim, {
+            toValue: direction * -1,
+            duration: 6000,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+
+    const orbOneLoop = createOrbLoop(orbOneAnim, 1);
+    const orbTwoLoop = createOrbLoop(orbTwoAnim, -1);
+
+    orbOneLoop.start();
+    orbTwoLoop.start();
+
+    return () => {
+      orbOneLoop.stop();
+      orbTwoLoop.stop();
+    };
+  }, [fadeAnim, slideAnim, scaleAnim, floatAnim, orbOneAnim, orbTwoAnim]);
+
+  const markIntroSeenAndNavigate = async (path: '/signup' | '/login') => {
+    try {
+      await AsyncStorage.setItem(INTRO_SCREEN_KEY, 'true');
+    } catch (error) {
+      console.error('Error setting intro flag:', error);
+    }
+
+    router.push(path);
+  };
 
   const isDark = colorScheme === 'dark';
 
@@ -121,6 +162,62 @@ export default function GetStartedScreen() {
               styles.gradientBg,
               {
                 backgroundColor: isDark ? '#7C3AED15' : '#7C3AED08',
+              },
+            ]}
+          />
+
+          {/* Animated Background Orbs */}
+          <Animated.View
+            style={[
+              styles.orb,
+              styles.orbPrimary,
+              {
+                transform: [
+                  {
+                    translateY: orbOneAnim.interpolate({
+                      inputRange: [-1, 1],
+                      outputRange: [-40, 40],
+                    }),
+                  },
+                  {
+                    translateX: orbOneAnim.interpolate({
+                      inputRange: [-1, 1],
+                      outputRange: [-30, 30],
+                    }),
+                  },
+                ],
+                opacity: fadeAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0, 0.6],
+                }),
+              },
+            ]}
+          />
+
+          <Animated.View
+            style={[
+              styles.orb,
+              styles.orbSecondary,
+              {
+                transform: [
+                  {
+                    translateY: orbTwoAnim.interpolate({
+                      inputRange: [-1, 1],
+                      outputRange: [50, -50],
+                    }),
+                  },
+                  {
+                    translateX: orbTwoAnim.interpolate({
+                      inputRange: [-1, 1],
+                      outputRange: [40, -40],
+                    }),
+                  },
+                  { scale: 1.1 },
+                ],
+                opacity: fadeAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0, 0.5],
+                }),
               },
             ]}
           />
@@ -319,7 +416,7 @@ export default function GetStartedScreen() {
                 styles.primaryButton,
                 { backgroundColor: colors.tint },
               ]}
-              onPress={() => router.push('/signup')}
+              onPress={() => markIntroSeenAndNavigate('/signup')}
               activeOpacity={0.8}
             >
               <Text style={styles.primaryButtonText}>Create Account</Text>
@@ -334,7 +431,7 @@ export default function GetStartedScreen() {
                   backgroundColor: colors.tint + '10',
                 },
               ]}
-              onPress={() => router.push('/login')}
+              onPress={() => markIntroSeenAndNavigate('/login')}
               activeOpacity={0.7}
             >
               <Text style={[styles.secondaryButtonText, { color: colors.tint }]}>
@@ -379,6 +476,23 @@ const styles = StyleSheet.create({
     bottom: 0,
     borderRadius: 32,
   },
+  orb: {
+    position: 'absolute',
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: '#7C3AED20',
+  },
+  orbPrimary: {
+    top: -40,
+    left: -20,
+    backgroundColor: '#7C3AED22',
+  },
+  orbSecondary: {
+    bottom: -60,
+    right: -10,
+    backgroundColor: '#6366F122',
+  },
   heroIcon: {
     marginBottom: 24,
     zIndex: 1,
@@ -419,24 +533,24 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   featuresGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: 16,
-  },
-  featureCard: {
-    width: '48%',
-    paddingVertical: 20,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    borderWidth: 1,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
+  flexDirection: 'row',
+  flexWrap: 'wrap',
+  justifyContent: 'space-between',
+},
+featureCard: {
+  width: '48%',
+  marginBottom: 16,
+  paddingVertical: 20,
+  paddingHorizontal: 16,
+  borderRadius: 20,
+  borderWidth: 1,
+  alignItems: 'center',
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.05,
+  shadowRadius: 8,
+  elevation: 2,
+},
   featureIconBg: {
     width: 56,
     height: 56,
