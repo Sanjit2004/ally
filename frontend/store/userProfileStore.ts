@@ -9,7 +9,7 @@ import {
 export interface UserProfile {
   displayName: string;
   preferredTone: 'friendly' | 'calm' | 'playful';
-  checkInFrequency: 'daily' | 'every-other-day' | 'weekly';
+  checkInFrequency: 'daily' | 'every-other-day' | 'weekly' | 'minute-by-minute';
   mainGoal: string;
   sensitiveTopics?: string;
   supportFocus?: string[];

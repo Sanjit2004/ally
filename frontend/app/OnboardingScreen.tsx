@@ -1,34 +1,54 @@
-import React, { useMemo, useState } from 'react';
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import { Colors, PrimaryColors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useUserProfileStore } from '@/store/userProfileStore';
+import { logOnboardingCompleted } from '@/utils/analytics';
+import { requestNotificationPermissions, scheduleCheckInNotification, type CheckInFrequency } from '@/utils/notifications';
+import { generatePersonaPrompt, parseCommaSeparatedList } from '@/utils/persona';
+import Slider from '@react-native-community/slider';
+import { router } from 'expo-router';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  StyleSheet,
-  View,
-  TextInput,
-  TouchableOpacity,
-  ScrollView,
+  Alert,
   KeyboardAvoidingView,
   Platform,
   SafeAreaView,
-  Alert,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import Slider from '@react-native-community/slider';
-import { router } from 'expo-router';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors, PrimaryColors } from '@/constants/theme';
-import { useUserProfileStore } from '@/store/userProfileStore';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { scheduleCheckInNotification, requestNotificationPermissions } from '@/utils/notifications';
-import { logOnboardingCompleted } from '@/utils/analytics';
-import { generatePersonaPrompt, parseCommaSeparatedList } from '@/utils/persona';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const SUPPORT_FOCUS_OPTIONS = ['Mental wellness', 'Productivity', 'Motivation', 'Relationships'];
 const ENCOURAGEMENT_OPTIONS: Array<'motivational' | 'practical' | 'humorous'> = ['motivational', 'practical', 'humorous'];
+const STEP_CONFIG = [
+  {
+    title: 'Your basics',
+    description: 'Share your name and main goal so Ally can stay focused on what matters most.',
+  },
+  {
+    title: 'How Ally should show up',
+    description: 'Adjust Ally’s tone and check-in rhythm to match your style.',
+  },
+  {
+    title: 'Support preferences',
+    description: 'Highlight sensitive areas and where you’d like extra support.',
+  },
+  {
+    title: 'Personal touches',
+    description: 'Tell Ally about your interests and how you like to be encouraged.',
+  },
+] as const;
+const TOTAL_STEPS = STEP_CONFIG.length;
 
 export default function OnboardingScreen() {
   const [displayName, setDisplayName] = useState('');
   const [preferredTone, setPreferredTone] = useState<'friendly' | 'calm' | 'playful'>('friendly');
-  const [checkInFrequency, setCheckInFrequency] = useState<'daily' | 'every-other-day' | 'weekly'>('daily');
+  const [checkInFrequency, setCheckInFrequency] = useState<CheckInFrequency>('daily');
   const [mainGoal, setMainGoal] = useState('');
   const [sensitiveTopics, setSensitiveTopics] = useState('');
   const [supportFocus, setSupportFocus] = useState<string[]>([]);
@@ -39,10 +59,46 @@ export default function OnboardingScreen() {
   const [energyLevel, setEnergyLevel] = useState<number>(5);
   const [energyTouched, setEnergyTouched] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currentStep, setCurrentStep] = useState(0);
 
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const { saveProfile } = useUserProfileStore();
+  const { bottom: safeBottomInset } = useSafeAreaInsets();
+  const scrollRef = useRef<ScrollView | null>(null);
+  const currentStepInfo = STEP_CONFIG[currentStep];
+  const isFirstStep = currentStep === 0;
+  const isFinalStep = currentStep === TOTAL_STEPS - 1;
+  const progress = (currentStep + 1) / TOTAL_STEPS;
+  const progressPercentage = Math.max(0, Math.min(progress, 1));
+  const canProceed = useMemo(() => {
+    if (currentStep === 0) {
+      return displayName.trim().length > 0 && mainGoal.trim().length > 0;
+    }
+    return true;
+  }, [currentStep, displayName, mainGoal]);
+  const primaryLabel = isFinalStep ? (isSubmitting ? 'Saving...' : 'Finish') : 'Next';
+  const isPrimaryDisabled = isFinalStep ? isSubmitting || !canProceed : !canProceed;
+  const primaryIconName = isFinalStep ? 'checkmark.circle.fill' : 'arrow.right';
+  const bottomInset = Math.max(safeBottomInset, 12);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
+  }, [currentStep]);
+
+  const handlePrimaryAction = async () => {
+    if (isFinalStep) {
+      await handleSubmit();
+    } else {
+      setCurrentStep((prev) => Math.min(prev + 1, TOTAL_STEPS - 1));
+    }
+  };
+
+  const handleBack = () => {
+    if (currentStep > 0) {
+      setCurrentStep((prev) => Math.max(prev - 1, 0));
+    }
+  };
 
   const formalityLabel = useMemo(() => {
     switch (formality) {
@@ -177,9 +233,9 @@ export default function OnboardingScreen() {
     onSelect,
   }: {
     label: string;
-    value: 'daily' | 'every-other-day' | 'weekly';
+    value: CheckInFrequency;
     selected: boolean;
-    onSelect: (value: 'daily' | 'every-other-day' | 'weekly') => void;
+    onSelect: (value: CheckInFrequency) => void;
   }) => (
     <TouchableOpacity
       style={[
@@ -208,6 +264,7 @@ export default function OnboardingScreen() {
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
         <ScrollView
+          ref={scrollRef}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
@@ -222,317 +279,393 @@ export default function OnboardingScreen() {
             </ThemedText>
           </ThemedView>
 
-          <ThemedView style={styles.form}>
-            {/* Display Name */}
-            <View style={styles.field}>
-              <ThemedText type="defaultSemiBold" style={styles.label}>
-                Display Name *
-              </ThemedText>
-              <TextInput
+          <View style={styles.progressSection}>
+            <View
+              style={[
+                styles.progressTrack,
+                { backgroundColor: colorScheme === 'dark' ? '#2F3036' : '#E5E7EB' },
+              ]}
+            >
+              <View
                 style={[
-                  styles.input,
+                  styles.progressFill,
                   {
-                    backgroundColor: colors.surface,
-                    borderColor: colorScheme === 'dark' ? '#3a3a3a' : '#E5E7EB',
-                    color: colors.text,
+                    width: `${Math.round(progressPercentage * 100)}%`,
+                    backgroundColor: colors.tint,
                   },
                 ]}
-                placeholder="Enter your name"
-                placeholderTextColor={PrimaryColors.textSecondary}
-                value={displayName}
-                onChangeText={setDisplayName}
-                autoCapitalize="words"
               />
             </View>
+            <ThemedText style={styles.stepCounter}>
+              Step {currentStep + 1} of {TOTAL_STEPS}
+            </ThemedText>
+          </View>
 
-            {/* Preferred Tone */}
-            <View style={styles.field}>
-              <ThemedText type="defaultSemiBold" style={styles.label}>
-                Preferred Tone
-              </ThemedText>
-              <View style={styles.radioGroup}>
-                <RadioButton
-                  label="Friendly"
-                  value="friendly"
-                  selected={preferredTone === 'friendly'}
-                  onSelect={setPreferredTone}
-                />
-                <RadioButton
-                  label="Calm"
-                  value="calm"
-                  selected={preferredTone === 'calm'}
-                  onSelect={setPreferredTone}
-                />
-                <RadioButton
-                  label="Playful"
-                  value="playful"
-                  selected={preferredTone === 'playful'}
-                  onSelect={setPreferredTone}
-                />
-              </View>
-            </View>
+          <ThemedView style={styles.stepCard}>
+            <ThemedText type="defaultSemiBold" style={styles.stepTitle}>
+              {currentStepInfo.title}
+            </ThemedText>
+            <ThemedText style={styles.stepDescription}>
+              {currentStepInfo.description}
+            </ThemedText>
 
-            {/* Check-in Frequency */}
-            <View style={styles.field}>
-              <ThemedText type="defaultSemiBold" style={styles.label}>
-                Check-in Frequency
-              </ThemedText>
-              <View style={styles.selectGroup}>
-                <SelectOption
-                  label="Daily"
-                  value="daily"
-                  selected={checkInFrequency === 'daily'}
-                  onSelect={setCheckInFrequency}
-                />
-                <SelectOption
-                  label="Every Other Day"
-                  value="every-other-day"
-                  selected={checkInFrequency === 'every-other-day'}
-                  onSelect={setCheckInFrequency}
-                />
-                <SelectOption
-                  label="Weekly"
-                  value="weekly"
-                  selected={checkInFrequency === 'weekly'}
-                  onSelect={setCheckInFrequency}
-                />
-              </View>
-            </View>
-
-            {/* Main Goal */}
-            <View style={styles.field}>
-              <ThemedText type="defaultSemiBold" style={styles.label}>
-                Main Goal *
-              </ThemedText>
-              <TextInput
-                style={[
-                  styles.textArea,
-                  {
-                    backgroundColor: colors.surface,
-                    borderColor: colorScheme === 'dark' ? '#3a3a3a' : '#E5E7EB',
-                    color: colors.text,
-                  },
-                ]}
-                placeholder="What do you hope to achieve with Ally?"
-                placeholderTextColor={PrimaryColors.textSecondary}
-                value={mainGoal}
-                onChangeText={setMainGoal}
-                multiline
-                numberOfLines={4}
-                textAlignVertical="top"
-              />
-            </View>
-
-            {/* Sensitive Topics */}
-            <View style={styles.field}>
-              <ThemedText type="defaultSemiBold" style={styles.label}>
-                Sensitive Topics
-              </ThemedText>
-              <TextInput
-                style={[
-                  styles.input,
-                  {
-                    backgroundColor: colors.surface,
-                    borderColor: colorScheme === 'dark' ? '#3a3a3a' : '#E5E7EB',
-                    color: colors.text,
-                  },
-                ]}
-                placeholder="e.g., anxiety, work stress, relationships (comma-separated)"
-                placeholderTextColor={PrimaryColors.textSecondary}
-                value={sensitiveTopics}
-                onChangeText={setSensitiveTopics}
-                autoCapitalize="none"
-              />
-              <ThemedText style={styles.hint}>
-                Topics you&apos;d like Ally to be mindful of (optional)
-              </ThemedText>
-            </View>
-
-            {/* Support Focus */}
-            <View style={styles.field}>
-              <ThemedText type="defaultSemiBold" style={styles.label}>
-                Support Focus Areas
-              </ThemedText>
-              <View style={styles.chipGroup}>
-                {SUPPORT_FOCUS_OPTIONS.map((option) => {
-                  const selected = supportFocus.includes(option);
-                  return (
-                    <TouchableOpacity
-                      key={option}
+            <View style={styles.stepContent}>
+              {currentStep === 0 && (
+                <>
+                  <View style={styles.field}>
+                    <ThemedText type="defaultSemiBold" style={styles.label}>
+                      Display Name *
+                    </ThemedText>
+                    <TextInput
                       style={[
-                        styles.chip,
+                        styles.input,
                         {
-                          borderColor: selected ? colors.tint : colorScheme === 'dark' ? '#3a3a3a' : '#E5E7EB',
-                          backgroundColor: selected ? colors.tint + '15' : 'transparent',
+                          backgroundColor: colors.surface,
+                          borderColor: colorScheme === 'dark' ? '#3a3a3a' : '#E5E7EB',
+                          color: colors.text,
                         },
                       ]}
-                      onPress={() => toggleSupportFocus(option)}
-                      activeOpacity={0.7}
-                    >
-                      <ThemedText
-                        style={[
-                          styles.chipLabel,
-                          { color: selected ? colors.tint : colors.text },
-                        ]}
-                      >
-                        {option}
-                      </ThemedText>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
+                      placeholder="Enter your name"
+                      placeholderTextColor={PrimaryColors.textSecondary}
+                      value={displayName}
+                      onChangeText={setDisplayName}
+                      autoCapitalize="words"
+                    />
+                  </View>
 
-            {/* Communication Style Slider */}
-            <View style={styles.field}>
-              <ThemedText type="defaultSemiBold" style={styles.label}>
-                Communication Style
-              </ThemedText>
-              <ThemedText style={styles.sliderCaption}>
-                {formalityLabel} ({formality}/5)
-              </ThemedText>
-              <Slider
-                value={formality}
-                minimumValue={1}
-                maximumValue={5}
-                step={1}
-                minimumTrackTintColor={colors.tint}
-                maximumTrackTintColor={colorScheme === 'dark' ? '#3a3a3a' : '#D1D5DB'}
-                thumbTintColor={colors.tint}
-                onValueChange={setFormality}
-              />
-            </View>
-
-            {/* Daily Challenge */}
-            <View style={styles.field}>
-              <ThemedText type="defaultSemiBold" style={styles.label}>
-                Daily Challenge
-              </ThemedText>
-              <TextInput
-                style={[
-                  styles.input,
-                  {
-                    backgroundColor: colors.surface,
-                    borderColor: colorScheme === 'dark' ? '#3a3a3a' : '#E5E7EB',
-                    color: colors.text,
-                  },
-                ]}
-                placeholder="What feels most challenging today?"
-                placeholderTextColor={PrimaryColors.textSecondary}
-                value={dailyChallenge}
-                onChangeText={setDailyChallenge}
-              />
-            </View>
-
-            {/* Hobbies & Interests */}
-            <View style={styles.field}>
-              <ThemedText type="defaultSemiBold" style={styles.label}>
-                Hobbies & Interests
-              </ThemedText>
-              <TextInput
-                style={[
-                  styles.input,
-                  {
-                    backgroundColor: colors.surface,
-                    borderColor: colorScheme === 'dark' ? '#3a3a3a' : '#E5E7EB',
-                    color: colors.text,
-                  },
-                ]}
-                placeholder="e.g., hiking, painting, podcasts"
-                placeholderTextColor={PrimaryColors.textSecondary}
-                value={interestsInput}
-                onChangeText={setInterestsInput}
-                autoCapitalize="words"
-              />
-              <ThemedText style={styles.hint}>
-                Comma-separated list (optional)
-              </ThemedText>
-            </View>
-
-            {/* Encouragement Style */}
-            <View style={styles.field}>
-              <ThemedText type="defaultSemiBold" style={styles.label}>
-                Preferred Encouragement Style
-              </ThemedText>
-              <View style={styles.selectGroup}>
-                {ENCOURAGEMENT_OPTIONS.map((option) => (
-                  <TouchableOpacity
-                    key={option}
-                    style={[
-                      styles.selectOption,
-                      encouragementStyle === option && {
-                        backgroundColor: colors.tint,
-                        borderColor: colors.tint,
-                      },
-                    ]}
-                    onPress={() => setEncouragementStyle(option)}
-                    activeOpacity={0.7}
-                  >
-                    <ThemedText
-                      style={[
-                        styles.selectLabel,
-                        encouragementStyle === option && { color: '#ffffff' },
-                      ]}
-                    >
-                      {option.charAt(0).toUpperCase() + option.slice(1)}
+                  <View style={styles.field}>
+                    <ThemedText type="defaultSemiBold" style={styles.label}>
+                      Main Goal *
                     </ThemedText>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
+                    <TextInput
+                      style={[
+                        styles.textArea,
+                        {
+                          backgroundColor: colors.surface,
+                          borderColor: colorScheme === 'dark' ? '#3a3a3a' : '#E5E7EB',
+                          color: colors.text,
+                        },
+                      ]}
+                      placeholder="What do you hope to achieve with Ally?"
+                      placeholderTextColor={PrimaryColors.textSecondary}
+                      value={mainGoal}
+                      onChangeText={setMainGoal}
+                      multiline
+                      numberOfLines={4}
+                      textAlignVertical="top"
+                    />
+                  </View>
+                </>
+              )}
 
-            {/* Energy Level */}
-            <View style={styles.field}>
-              <ThemedText type="defaultSemiBold" style={styles.label}>
-                Energy Level Today (optional)
-              </ThemedText>
-              <View style={styles.energyHeader}>
-                <ThemedText style={styles.energyLabel}>{energyLabel}</ThemedText>
-                {energyTouched && (
-                  <TouchableOpacity
-                    onPress={() => {
-                      setEnergyTouched(false);
-                      setEnergyLevel(5);
-                    }}
-                  >
-                    <ThemedText style={[styles.resetLink, { color: colors.tint }]}>Reset</ThemedText>
-                  </TouchableOpacity>
-                )}
-              </View>
-              <Slider
-                value={energyTouched ? energyLevel : 5}
-                minimumValue={1}
-                maximumValue={10}
-                step={1}
-                minimumTrackTintColor={colors.tint}
-                maximumTrackTintColor={colorScheme === 'dark' ? '#3a3a3a' : '#D1D5DB'}
-                thumbTintColor={colors.tint}
-                onValueChange={(value: number) => {
-                  setEnergyTouched(true);
-                  setEnergyLevel(value);
-                }}
-              />
-              {energyTouched && (
-                <ThemedText style={styles.energyValue}>{energyLevel} / 10</ThemedText>
+              {currentStep === 1 && (
+                <>
+                  <View style={styles.field}>
+                    <ThemedText type="defaultSemiBold" style={styles.label}>
+                      Preferred Tone
+                    </ThemedText>
+                    <View style={styles.radioGroup}>
+                      <RadioButton
+                        label="Friendly"
+                        value="friendly"
+                        selected={preferredTone === 'friendly'}
+                        onSelect={setPreferredTone}
+                      />
+                      <RadioButton
+                        label="Calm"
+                        value="calm"
+                        selected={preferredTone === 'calm'}
+                        onSelect={setPreferredTone}
+                      />
+                      <RadioButton
+                        label="Playful"
+                        value="playful"
+                        selected={preferredTone === 'playful'}
+                        onSelect={setPreferredTone}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.field}>
+                    <ThemedText type="defaultSemiBold" style={styles.label}>
+                      Check-in Frequency
+                    </ThemedText>
+                    <View style={styles.selectGroup}>
+                      {[
+                        { label: 'Daily', value: 'daily' as CheckInFrequency },
+                        { label: 'Every Other Day', value: 'every-other-day' as CheckInFrequency },
+                        { label: 'Weekly', value: 'weekly' as CheckInFrequency },
+                        { label: 'Minute by Minute', value: 'minute-by-minute' as CheckInFrequency },
+                      ].map((option) => (
+                        <SelectOption
+                          key={option.value}
+                          label={option.label}
+                          value={option.value}
+                          selected={checkInFrequency === option.value}
+                          onSelect={setCheckInFrequency}
+                        />
+                      ))}
+                    </View>
+                  </View>
+                </>
+              )}
+
+              {currentStep === 2 && (
+                <>
+                  <View style={styles.field}>
+                    <ThemedText type="defaultSemiBold" style={styles.label}>
+                      Sensitive Topics
+                    </ThemedText>
+                    <TextInput
+                      style={[
+                        styles.input,
+                        {
+                          backgroundColor: colors.surface,
+                          borderColor: colorScheme === 'dark' ? '#3a3a3a' : '#E5E7EB',
+                          color: colors.text,
+                        },
+                      ]}
+                      placeholder="e.g., anxiety, work stress, relationships (comma-separated)"
+                      placeholderTextColor={PrimaryColors.textSecondary}
+                      value={sensitiveTopics}
+                      onChangeText={setSensitiveTopics}
+                      autoCapitalize="none"
+                    />
+                    <ThemedText style={styles.hint}>
+                      Topics you&apos;d like Ally to be mindful of (optional)
+                    </ThemedText>
+                  </View>
+
+                  <View style={styles.field}>
+                    <ThemedText type="defaultSemiBold" style={styles.label}>
+                      Support Focus Areas
+                    </ThemedText>
+                    <View style={styles.chipGroup}>
+                      {SUPPORT_FOCUS_OPTIONS.map((option) => {
+                        const selected = supportFocus.includes(option);
+                        return (
+                          <TouchableOpacity
+                            key={option}
+                            style={[
+                              styles.chip,
+                              {
+                                borderColor: selected ? colors.tint : colorScheme === 'dark' ? '#3a3a3a' : '#E5E7EB',
+                                backgroundColor: selected ? colors.tint + '15' : 'transparent',
+                              },
+                            ]}
+                            onPress={() => toggleSupportFocus(option)}
+                            activeOpacity={0.7}
+                          >
+                            <ThemedText
+                              style={[
+                                styles.chipLabel,
+                                { color: selected ? colors.tint : colors.text },
+                              ]}
+                            >
+                              {option}
+                            </ThemedText>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </View>
+
+                  <View style={styles.field}>
+                    <ThemedText type="defaultSemiBold" style={styles.label}>
+                      Communication Style
+                    </ThemedText>
+                    <ThemedText style={styles.sliderCaption}>
+                      {formalityLabel} ({formality}/5)
+                    </ThemedText>
+                    <Slider
+                      value={formality}
+                      minimumValue={1}
+                      maximumValue={5}
+                      step={1}
+                      minimumTrackTintColor={colors.tint}
+                      maximumTrackTintColor={colorScheme === 'dark' ? '#3a3a3a' : '#D1D5DB'}
+                      thumbTintColor={colors.tint}
+                      onValueChange={setFormality}
+                    />
+                  </View>
+                </>
+              )}
+
+              {currentStep === 3 && (
+                <>
+                  <View style={styles.field}>
+                    <ThemedText type="defaultSemiBold" style={styles.label}>
+                      Daily Challenge
+                    </ThemedText>
+                    <TextInput
+                      style={[
+                        styles.input,
+                        {
+                          backgroundColor: colors.surface,
+                          borderColor: colorScheme === 'dark' ? '#3a3a3a' : '#E5E7EB',
+                          color: colors.text,
+                        },
+                      ]}
+                      placeholder="What feels most challenging today?"
+                      placeholderTextColor={PrimaryColors.textSecondary}
+                      value={dailyChallenge}
+                      onChangeText={setDailyChallenge}
+                    />
+                  </View>
+
+                  <View style={styles.field}>
+                    <ThemedText type="defaultSemiBold" style={styles.label}>
+                      Hobbies & Interests
+                    </ThemedText>
+                    <TextInput
+                      style={[
+                        styles.input,
+                        {
+                          backgroundColor: colors.surface,
+                          borderColor: colorScheme === 'dark' ? '#3a3a3a' : '#E5E7EB',
+                          color: colors.text,
+                        },
+                      ]}
+                      placeholder="e.g., hiking, painting, podcasts"
+                      placeholderTextColor={PrimaryColors.textSecondary}
+                      value={interestsInput}
+                      onChangeText={setInterestsInput}
+                      autoCapitalize="words"
+                    />
+                    <ThemedText style={styles.hint}>
+                      Comma-separated list (optional)
+                    </ThemedText>
+                  </View>
+
+                  <View style={styles.field}>
+                    <ThemedText type="defaultSemiBold" style={styles.label}>
+                      Preferred Encouragement Style
+                    </ThemedText>
+                    <View style={styles.selectGroup}>
+                      {ENCOURAGEMENT_OPTIONS.map((option) => (
+                        <TouchableOpacity
+                          key={option}
+                          style={[
+                            styles.selectOption,
+                            encouragementStyle === option && {
+                              backgroundColor: colors.tint,
+                              borderColor: colors.tint,
+                            },
+                          ]}
+                          onPress={() => setEncouragementStyle(option)}
+                          activeOpacity={0.7}
+                        >
+                          <ThemedText
+                            style={[
+                              styles.selectLabel,
+                              encouragementStyle === option && { color: '#ffffff' },
+                            ]}
+                          >
+                            {option.charAt(0).toUpperCase() + option.slice(1)}
+                          </ThemedText>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+
+                  <View style={styles.field}>
+                    <ThemedText type="defaultSemiBold" style={styles.label}>
+                      Energy Level Today (optional)
+                    </ThemedText>
+                    <View style={styles.energyHeader}>
+                      <ThemedText style={styles.energyLabel}>{energyLabel}</ThemedText>
+                      {energyTouched && (
+                        <TouchableOpacity
+                          onPress={() => {
+                            setEnergyTouched(false);
+                            setEnergyLevel(5);
+                          }}
+                        >
+                          <ThemedText style={[styles.resetLink, { color: colors.tint }]}>Reset</ThemedText>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                    <Slider
+                      value={energyTouched ? energyLevel : 5}
+                      minimumValue={1}
+                      maximumValue={10}
+                      step={1}
+                      minimumTrackTintColor={colors.tint}
+                      maximumTrackTintColor={colorScheme === 'dark' ? '#3a3a3a' : '#D1D5DB'}
+                      thumbTintColor={colors.tint}
+                      onValueChange={(value: number) => {
+                        setEnergyTouched(true);
+                        setEnergyLevel(value);
+                      }}
+                    />
+                    {energyTouched && (
+                      <ThemedText style={styles.energyValue}>{energyLevel} / 10</ThemedText>
+                    )}
+                  </View>
+                </>
               )}
             </View>
-
-            {/* Submit Button */}
-            <TouchableOpacity
-              style={[
-                styles.submitButton,
-                { backgroundColor: colors.tint },
-                isSubmitting && styles.submitButtonDisabled,
-              ]}
-              onPress={handleSubmit}
-              disabled={isSubmitting}
-            >
-              <ThemedText style={styles.submitButtonText}>
-                {isSubmitting ? 'Saving...' : 'Get Started'}
-              </ThemedText>
-            </TouchableOpacity>
           </ThemedView>
         </ScrollView>
+
+        <View
+          style={[
+            styles.stepActions,
+            {
+              paddingTop: 20,
+              paddingBottom: Math.max(bottomInset, 24),
+              backgroundColor: colors.surface,
+              borderTopWidth: 1,
+              borderTopColor: colorScheme === 'dark' ? '#2F3036' : '#E5E7EB',
+              shadowColor: colorScheme === 'dark' ? '#000' : '#101828',
+              shadowOpacity: 0.08,
+              shadowRadius: 12,
+              shadowOffset: { width: 0, height: -6 },
+              elevation: 3,
+            },
+          ]}
+        >
+          {!isFirstStep && (
+            <TouchableOpacity
+              style={[
+                styles.secondaryButton,
+                {
+                  borderColor: colorScheme === 'dark' ? '#2F3036' : '#D6DEEA',
+                  backgroundColor: colorScheme === 'dark' ? '#1A1B1F' : '#F3F6FB',
+                },
+              ]}
+              onPress={handleBack}
+              activeOpacity={0.85}
+            >
+              <View style={styles.buttonContent}>
+                <IconSymbol name="chevron.left" size={18} color={colors.text} />
+                <ThemedText style={[styles.secondaryButtonText, { color: colors.text, marginLeft: 8 }]}>Back</ThemedText>
+              </View>
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity
+            style={[
+              styles.primaryButton,
+              {
+                backgroundColor: colors.tint,
+                opacity: isPrimaryDisabled ? 0.6 : 1,
+                shadowColor: colors.tint,
+              },
+              isFirstStep && { flex: 1 },
+            ]}
+            onPress={handlePrimaryAction}
+            disabled={isPrimaryDisabled}
+            activeOpacity={0.9}
+          >
+            <View style={styles.buttonContent}>
+              <ThemedText style={styles.primaryButtonText}>{primaryLabel}</ThemedText>
+              {!isSubmitting && (
+                <IconSymbol name={primaryIconName} size={18} color="#ffffff" />
+              )}
+            </View>
+          </TouchableOpacity>
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -558,6 +691,53 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 24,
   },
+  progressSection: {
+    paddingHorizontal: 24,
+    marginBottom: 20,
+  },
+  progressTrack: {
+    height: 8,
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  stepCounter: {
+    marginTop: 12,
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+    opacity: 0.7,
+  },
+  stepCard: {
+    marginHorizontal: 24,
+    padding: 24,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.08,
+    shadowRadius: 20,
+    elevation: 3,
+    marginBottom: 32,
+  },
+  stepTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  stepDescription: {
+    fontSize: 15,
+    lineHeight: 22,
+    opacity: 0.75,
+    marginBottom: 24,
+  },
+  stepContent: {
+    gap: 24,
+  },
   title: {
     fontSize: 32,
     fontWeight: '700',
@@ -570,9 +750,6 @@ const styles = StyleSheet.create({
     opacity: 0.7,
     textAlign: 'center',
     lineHeight: 22,
-  },
-  form: {
-    padding: 24,
   },
   field: {
     marginBottom: 24,
@@ -675,25 +852,46 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
   },
-  submitButton: {
-    paddingVertical: 18,
-    borderRadius: 16,
+  stepActions: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
+    justifyContent: 'space-between',
+    gap: 16,
+    paddingHorizontal: 24,
   },
-  submitButtonDisabled: {
-    opacity: 0.6,
+  secondaryButton: {
+    flex: 1,
+    minHeight: 56,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  submitButtonText: {
+  secondaryButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  primaryButton: {
+    flex: 1,
+    minHeight: 56,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 6,
+  },
+  primaryButtonText: {
     color: '#ffffff',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
-    letterSpacing: 0.5,
+  },
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
   },
   energyHeader: {
     flexDirection: 'row',

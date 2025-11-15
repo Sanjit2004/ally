@@ -571,16 +571,22 @@ ${systemPrompt}`
           style={[
             styles.inputContainer,
             {
-              backgroundColor: 'transparent',
+              backgroundColor: colorScheme === 'dark' ? '#101013' : '#F7F8FA',
               borderTopColor: 'transparent',
               paddingBottom: bottomPadding,
             },
           ]}
         >
-          <View style={[styles.inputWrapper, {
-            backgroundColor: colors.background,
-            borderColor: colorScheme === 'dark' ? '#3a3a3a' : '#E5E7EB',
-          }]}>
+          <View
+            style={[
+              styles.inputWrapper,
+              {
+                backgroundColor: colorScheme === 'dark' ? '#1A1B1F' : '#FFFFFF',
+                borderColor: colorScheme === 'dark' ? '#2E2F34' : '#E5E7EB',
+                shadowColor: colorScheme === 'dark' ? '#000' : '#1F2933',
+              },
+            ]}
+          >
             <VoiceButton
               onResult={(text) => {
                 setInputText(prev => prev ? `${prev} ${text}` : text);
@@ -603,9 +609,13 @@ ${systemPrompt}`
               multiline
             />
             <TouchableOpacity
-              style={[styles.ttsButton, { 
-                borderColor: ttsEnabled ? colors.tint : (colorScheme === 'dark' ? '#3a3a3a' : '#E5E7EB') 
-              }]}
+              style={[
+                styles.ttsButton,
+                {
+                  borderColor: ttsEnabled ? colors.tint : (colorScheme === 'dark' ? '#2E2F34' : '#E5E7EB'),
+                  backgroundColor: colorScheme === 'dark' ? '#1F2024' : '#F1F5F9',
+                },
+              ]}
               onPress={() => setTtsEnabled(!ttsEnabled)}
             >
               <IconSymbol
@@ -615,10 +625,18 @@ ${systemPrompt}`
               />
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.sendButton, { 
-                backgroundColor: inputText.trim() ? colors.tint : (colorScheme === 'dark' ? '#3a3a3a' : '#E5E7EB'),
-                opacity: inputText.trim() ? 1 : 0.7
-              }]}
+              style={[
+                styles.sendButton,
+                {
+                  backgroundColor: inputText.trim()
+                    ? colors.tint
+                    : colorScheme === 'dark'
+                    ? '#2E2F34'
+                    : '#E5E7EB',
+                  opacity: inputText.trim() ? 1 : 0.7,
+                  shadowColor: colors.tint,
+                },
+              ]}
               onPress={handleSend}
               disabled={isLoading || inputText.trim() === ''}
             >
