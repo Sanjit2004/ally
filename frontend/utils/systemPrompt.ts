@@ -126,11 +126,12 @@ function getToneInstructions(tone: 'friendly' | 'calm' | 'playful'): string {
 /**
  * Returns check-in frequency note
  */
-function getCheckInNote(frequency: 'daily' | 'every-other-day' | 'weekly'): string {
+function getCheckInNote(frequency: 'daily' | 'every-other-day' | 'weekly' | 'minute-by-minute'): string {
   const frequencyMap = {
     daily: '\n\nNote: The user prefers daily check-ins. You can gently check in on their progress and wellbeing during conversations.',
     'every-other-day': '\n\nNote: The user prefers check-ins every other day. Be mindful of this preference when suggesting follow-ups.',
-    weekly: '\n\nNote: The user prefers weekly check-ins. Respect this pace and don\'t be overly persistent with daily follow-ups.',
+    weekly: "\n\nNote: The user prefers weekly check-ins. Respect this pace and don't be overly persistent with daily follow-ups.",
+    'minute-by-minute': '\n\nNote: The user prefers very frequent check-ins. Offer brief, supportive touchpoints and invite them to reach out whenever they need immediate encouragement.',
   };
 
   return frequencyMap[frequency] || '';

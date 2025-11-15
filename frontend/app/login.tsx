@@ -1,21 +1,21 @@
-import React, { useState } from 'react';
-import {
-  StyleSheet,
-  View,
-  TextInput,
-  TouchableOpacity,
-  SafeAreaView,
-  KeyboardAvoidingView,
-  Platform,
-  Alert,
-  ScrollView,
-} from 'react-native';
-import { router, Link } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors, PrimaryColors } from '@/constants/theme';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { Colors, PrimaryColors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Link, router } from 'expo-router';
+import React, { useState } from 'react';
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -25,10 +25,10 @@ export default function LoginScreen() {
   const colors = Colors[colorScheme ?? 'light'];
 
   const handleEmailLogin = async () => {
-    if (!email.trim() || !password.trim()) {
-      Alert.alert('Error', 'Please enter both email and password.');
-      return;
-    }
+    // if (!email.trim() || !password.trim()) {
+    //   Alert.alert('Error', 'Please enter both email and password.');
+    //   return;
+    // }
 
     setIsLoading(true);
     // Simulate API call

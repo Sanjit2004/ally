@@ -11,7 +11,7 @@ Notifications.setNotificationHandler({
   }),
 });
 
-export type CheckInFrequency = 'daily' | 'every-other-day' | 'weekly';
+export type CheckInFrequency = 'daily' | 'every-other-day' | 'weekly' | 'minute-by-minute';
 
 const NOTIFICATION_ID_KEY = '@ally_notification_id';
 
@@ -26,6 +26,8 @@ function getFrequencyMs(frequency: CheckInFrequency): number {
       return 48 * 60 * 60 * 1000; // 48 hours
     case 'weekly':
       return 7 * 24 * 60 * 60 * 1000; // 7 days
+    case 'minute-by-minute':
+      return 60 * 1000; // 1 minute
   }
 }
 

@@ -6,16 +6,13 @@ import { useRouter } from 'expo-router';
 import React, { useEffect, useRef } from 'react';
 import {
   Animated,
-  Dimensions,
   SafeAreaView,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View
 } from 'react-native';
 
-const { width, height } = Dimensions.get('window');
 const INTRO_SCREEN_KEY = '@ally_has_seen_intro';
 
 interface Feature {
@@ -40,10 +37,18 @@ const FEATURES: Feature[] = [
     title: 'Voice Calls',
     description: 'Talk to your AI companion naturally',
   },
+];
+
+const BENEFITS: Feature[] = [
   {
-    icon: 'heart.fill',
-    title: 'Emotional Support',
-    description: 'Mood-aware responses tailored to you',
+    icon: 'lock.fill',
+    title: 'Privacy First',
+    description: 'Your conversations stay encrypted and secure.',
+  },
+  {
+    icon: 'sparkle.magnifyingglass',
+    title: 'Learns With You',
+    description: 'Ally remembers context so every chat picks up naturally.',
   },
 ];
 
@@ -138,12 +143,8 @@ export default function GetStartedScreen() {
   const isDark = colorScheme === 'dark';
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-        {/* Hero Section */}
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}> 
+      <View style={styles.content}>
         <Animated.View
           style={[
             styles.heroSection,
@@ -156,7 +157,6 @@ export default function GetStartedScreen() {
             },
           ]}
         >
-          {/* Animated Background Gradient */}
           <View
             style={[
               styles.gradientBg,
@@ -166,7 +166,6 @@ export default function GetStartedScreen() {
             ]}
           />
 
-          {/* Animated Background Orbs */}
           <Animated.View
             style={[
               styles.orb,
@@ -176,19 +175,19 @@ export default function GetStartedScreen() {
                   {
                     translateY: orbOneAnim.interpolate({
                       inputRange: [-1, 1],
-                      outputRange: [-40, 40],
+                      outputRange: [-30, 30],
                     }),
                   },
                   {
                     translateX: orbOneAnim.interpolate({
                       inputRange: [-1, 1],
-                      outputRange: [-30, 30],
+                      outputRange: [-20, 20],
                     }),
                   },
                 ],
                 opacity: fadeAnim.interpolate({
                   inputRange: [0, 1],
-                  outputRange: [0, 0.6],
+                  outputRange: [0, 0.4],
                 }),
               },
             ]}
@@ -203,26 +202,25 @@ export default function GetStartedScreen() {
                   {
                     translateY: orbTwoAnim.interpolate({
                       inputRange: [-1, 1],
-                      outputRange: [50, -50],
+                      outputRange: [30, -30],
                     }),
                   },
                   {
                     translateX: orbTwoAnim.interpolate({
                       inputRange: [-1, 1],
-                      outputRange: [40, -40],
+                      outputRange: [24, -24],
                     }),
                   },
-                  { scale: 1.1 },
+                  { scale: 1.05 },
                 ],
                 opacity: fadeAnim.interpolate({
                   inputRange: [0, 1],
-                  outputRange: [0, 0.5],
+                  outputRange: [0, 0.35],
                 }),
               },
             ]}
           />
 
-          {/* Floating Animated Icon */}
           <Animated.View
             style={[
               styles.heroIcon,
@@ -237,11 +235,10 @@ export default function GetStartedScreen() {
                 { backgroundColor: colors.tint + '20' },
               ]}
             >
-              <IconSymbol name="sparkles" size={60} color={colors.tint} />
+              <IconSymbol name="sparkles" size={56} color={colors.tint} />
             </View>
           </Animated.View>
 
-          {/* Hero Text */}
           <Text
             style={[
               styles.heroTitle,
@@ -256,142 +253,39 @@ export default function GetStartedScreen() {
               { color: colors.text + '99' },
             ]}
           >
-            Your personal AI companion for meaningful conversations and emotional support
+            Your AI companion for meaningful conversations and everyday encouragement.
           </Text>
         </Animated.View>
 
-        {/* Features Grid */}
-        <View style={styles.featuresSection}>
-          <Text
-            style={[
-              styles.sectionTitle,
-              { color: colors.text },
-            ]}
-          >
-            Powerful Features
-          </Text>
-
-          <View style={styles.featuresGrid}>
-            {FEATURES.map((feature, index) => (
-              <Animated.View
-                key={index}
-                style={[
-                  styles.featureCard,
-                  {
-                    backgroundColor: isDark ? colors.surface : colors.background,
-                    borderColor: isDark ? '#2a2a2a' : '#E5E7EB',
-                    opacity: fadeAnim,
-                    transform: [
-                      {
-                        translateY: slideAnim.interpolate({
-                          inputRange: [0, 50],
-                          outputRange: [0, 50 - index * 10],
-                        }),
-                      },
-                    ],
-                  },
-                ]}
-              >
-                <View
-                  style={[
-                    styles.featureIconBg,
-                    { backgroundColor: colors.tint + '15' },
-                  ]}
-                >
-                  <IconSymbol
-                    name={feature.icon}
-                    size={28}
-                    color={colors.tint}
-                  />
-                </View>
-                <Text
-                  style={[
-                    styles.featureTitle,
-                    { color: colors.text },
-                  ]}
-                >
-                  {feature.title}
-                </Text>
-                <Text
-                  style={[
-                    styles.featureDescription,
-                    { color: colors.text + '80' },
-                  ]}
-                >
-                  {feature.description}
-                </Text>
-              </Animated.View>
-            ))}
-          </View>
+        <View style={styles.featureStrip}>
+          {FEATURES.map((feature) => (
+            <View
+              key={feature.title}
+              style={[styles.featurePill, { backgroundColor: colors.tint + '10' }]}
+            >
+              <IconSymbol name={feature.icon} size={18} color={colors.tint} />
+              <Text style={[styles.featurePillText, { color: colors.text }]}>{feature.title}</Text>
+            </View>
+          ))}
         </View>
 
-        {/* Highlights Section */}
-        <View style={styles.highlightsSection}>
-          <View style={styles.highlightItem}>
+        <View style={styles.benefitsSection}>
+          {BENEFITS.map((benefit) => (
             <View
-              style={[
-                styles.highlightNumber,
-                { backgroundColor: colors.tint + '20' },
-              ]}
+              key={benefit.title}
+              style={[styles.benefitCard, { backgroundColor: isDark ? colors.surface : '#ffffff', shadowColor: colors.tint + '40' }]}
             >
-              <Text style={[styles.highlightNumberText, { color: colors.tint }]}>
-                ✓
+              <View style={[styles.benefitIcon, { backgroundColor: colors.tint + '15' }]}> 
+                <IconSymbol name={benefit.icon} size={20} color={colors.tint} />
+              </View>
+              <Text style={[styles.benefitTitle, { color: colors.text }]}>{benefit.title}</Text>
+              <Text style={[styles.benefitDescription, { color: colors.text + '95' }]}>
+                {benefit.description}
               </Text>
             </View>
-            <View style={styles.highlightContent}>
-              <Text style={[styles.highlightTitle, { color: colors.text }]}>
-                Privacy First
-              </Text>
-              <Text style={[styles.highlightDesc, { color: colors.text + '80' }]}>
-                Your conversations are encrypted and secure
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.highlightItem}>
-            <View
-              style={[
-                styles.highlightNumber,
-                { backgroundColor: colors.tint + '20' },
-              ]}
-            >
-              <Text style={[styles.highlightNumberText, { color: colors.tint }]}>
-                ✓
-              </Text>
-            </View>
-            <View style={styles.highlightContent}>
-              <Text style={[styles.highlightTitle, { color: colors.text }]}>
-                Always Learning
-              </Text>
-              <Text style={[styles.highlightDesc, { color: colors.text + '80' }]}>
-                Improves over time to understand you better
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.highlightItem}>
-            <View
-              style={[
-                styles.highlightNumber,
-                { backgroundColor: colors.tint + '20' },
-              ]}
-            >
-              <Text style={[styles.highlightNumberText, { color: colors.tint }]}>
-                ✓
-              </Text>
-            </View>
-            <View style={styles.highlightContent}>
-              <Text style={[styles.highlightTitle, { color: colors.text }]}>
-                24/7 Available
-              </Text>
-              <Text style={[styles.highlightDesc, { color: colors.text + '80' }]}>
-                Always here when you need someone to talk to
-              </Text>
-            </View>
-          </View>
+          ))}
         </View>
 
-        {/* CTA Section */}
         <View style={styles.ctaSection}>
           <Text
             style={[
@@ -407,47 +301,24 @@ export default function GetStartedScreen() {
               { color: colors.text + '99' },
             ]}
           >
-            Join thousands of users experiencing meaningful AI conversations
+            Join thousands of users building healthier habits with Ally.
           </Text>
 
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity
-              style={[
-                styles.primaryButton,
-                { backgroundColor: colors.tint },
-              ]}
-              onPress={() => markIntroSeenAndNavigate('/signup')}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.primaryButtonText}>Create Account</Text>
-              <IconSymbol name="arrow.right" size={18} color="#ffffff" />
-            </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.primaryButton,
+              { backgroundColor: colors.tint },
+            ]}
+            onPress={() => markIntroSeenAndNavigate('/login')}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.primaryButtonText}>Get Started</Text>
+            <IconSymbol name="arrow.right" size={18} color="#ffffff" />
+          </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[
-                styles.secondaryButton,
-                {
-                  borderColor: colors.tint,
-                  backgroundColor: colors.tint + '10',
-                },
-              ]}
-              onPress={() => markIntroSeenAndNavigate('/login')}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.secondaryButtonText, { color: colors.tint }]}>
-                Sign In
-              </Text>
-            </TouchableOpacity>
-          </View>
+          <Text style={[styles.footerText, { color: colors.text + '66' }]}>By continuing, you agree to our Terms of Service.</Text>
         </View>
-
-        {/* Footer */}
-        <View style={styles.footer}>
-          <Text style={[styles.footerText, { color: colors.text + '66' }]}>
-            By continuing, you agree to our Terms of Service
-          </Text>
-        </View>
-      </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
@@ -456,25 +327,31 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  scrollContent: {
-    flexGrow: 1,
-    paddingBottom: 40,
+  content: {
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingVertical: 24,
+    justifyContent: 'space-between',
   },
   heroSection: {
-    paddingHorizontal: 24,
-    paddingTop: 40,
-    paddingBottom: 60,
     alignItems: 'center',
+    paddingTop: 24,
     position: 'relative',
     overflow: 'hidden',
+    borderRadius: 32,
+    marginBottom: 32,
+    backgroundColor: '#7C3AED08',
+    paddingBottom: 32,
+    minHeight: 260,
   },
   gradientBg: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    ...StyleSheet.absoluteFillObject,
     borderRadius: 32,
+  },
+  orbSecondary: {
+    backgroundColor: '#F472B63b',
+    width: 200,
+    height: 200,
   },
   orb: {
     position: 'absolute',
@@ -486,12 +363,6 @@ const styles = StyleSheet.create({
   orbPrimary: {
     top: -40,
     left: -20,
-    backgroundColor: '#7C3AED22',
-  },
-  orbSecondary: {
-    bottom: -60,
-    right: -10,
-    backgroundColor: '#6366F122',
   },
   heroIcon: {
     marginBottom: 24,
@@ -510,107 +381,77 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   heroTitle: {
-    fontSize: 48,
-    fontWeight: '800',
+    fontSize: 34,
+    fontWeight: '700',
+    marginTop: 24,
     marginBottom: 12,
     textAlign: 'center',
-    letterSpacing: -1,
   },
   heroSubtitle: {
     fontSize: 16,
-    lineHeight: 24,
+    lineHeight: 22,
     textAlign: 'center',
-    maxWidth: 320,
+    paddingHorizontal: 16,
   },
-  featuresSection: {
-    paddingHorizontal: 24,
-    marginBottom: 60,
-  },
-  sectionTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    marginBottom: 24,
-    textAlign: 'center',
-  },
-  featuresGrid: {
-  flexDirection: 'row',
-  flexWrap: 'wrap',
-  justifyContent: 'space-between',
-},
-featureCard: {
-  width: '48%',
-  marginBottom: 16,
-  paddingVertical: 20,
-  paddingHorizontal: 16,
-  borderRadius: 20,
-  borderWidth: 1,
-  alignItems: 'center',
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.05,
-  shadowRadius: 8,
-  elevation: 2,
-},
-  featureIconBg: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+  featureStrip: {
+    flexDirection: 'row',
     justifyContent: 'center',
+    gap: 10,
+    marginBottom: 24,
+    flexWrap: 'wrap',
+  },
+  featurePill: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  featurePillText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  benefitsSection: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 28,
+    flexWrap: 'wrap',
+  },
+  benefitCard: {
+    flexBasis: '48%',
+    padding: 18,
+    borderRadius: 20,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.12,
+    shadowRadius: 18,
+    elevation: 4,
+  },
+  benefitIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 12,
   },
-  featureTitle: {
+  benefitTitle: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 8,
-    textAlign: 'center',
+    marginBottom: 6,
   },
-  featureDescription: {
+  benefitDescription: {
     fontSize: 13,
     lineHeight: 18,
-    textAlign: 'center',
-  },
-  highlightsSection: {
-    paddingHorizontal: 24,
-    marginBottom: 60,
-    gap: 20,
-  },
-  highlightItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 16,
-  },
-  highlightNumber: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 2,
-  },
-  highlightNumberText: {
-    fontSize: 20,
-    fontWeight: '700',
-  },
-  highlightContent: {
-    flex: 1,
-  },
-  highlightTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  highlightDesc: {
-    fontSize: 14,
-    lineHeight: 20,
+    opacity: 0.85,
   },
   ctaSection: {
-    paddingHorizontal: 24,
-    marginBottom: 40,
     alignItems: 'center',
+    alignSelf: 'stretch',
+    marginBottom: 12,
   },
   ctaTitle: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '700',
     marginBottom: 12,
     textAlign: 'center',
@@ -623,16 +464,20 @@ featureCard: {
     maxWidth: 300,
   },
   buttonContainer: {
+    alignSelf: 'stretch',
     width: '100%',
-    gap: 12,
+    gap: 14,
+    flexDirection: 'column',
+    marginTop: 16,
   },
   primaryButton: {
     flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
     paddingVertical: 16,
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
     borderRadius: 28,
     justifyContent: 'center',
-    alignItems: 'center',
     gap: 8,
     shadowColor: '#7C3AED',
     shadowOffset: { width: 0, height: 8 },
