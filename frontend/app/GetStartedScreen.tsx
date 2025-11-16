@@ -145,7 +145,11 @@ export default function GetStartedScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}> 
+<<<<<<< HEAD
     <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+=======
+    <ScrollView>
+>>>>>>> 8ac6b696daa4b25e15512fe281d4179ea0c26b34
       <View style={styles.content}>
         <Animated.View
           style={[
@@ -321,7 +325,11 @@ export default function GetStartedScreen() {
           <Text style={[styles.footerText, { color: colors.text + '66' }]}>By continuing, you agree to our Terms of Service.</Text>
         </View>
       </View>
-      </ScrollView>
+<<<<<<< HEAD
+    </ScrollView>
+=======
+    </ScrollView>
+>>>>>>> 8ac6b696daa4b25e15512fe281d4179ea0c26b34
     </SafeAreaView>
   );
 }

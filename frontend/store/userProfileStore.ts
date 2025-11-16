@@ -6,6 +6,8 @@ import {
   PersonaProfileInput,
 } from '@/utils/persona';
 
+export type UserMood = 'calm' | 'curious' | 'supportive' | 'focused';
+
 export interface UserProfile {
   displayName: string;
   preferredTone: 'friendly' | 'calm' | 'playful';
@@ -19,6 +21,8 @@ export interface UserProfile {
   encouragementStyle?: 'motivational' | 'practical' | 'humorous';
   energyLevel?: number;
   personaPrompt: string;
+  avatarUrl?: string;
+  mood?: UserMood;
 }
 
 type UserProfileInput = Omit<UserProfile, 'personaPrompt'> & { personaPrompt?: string };
@@ -96,6 +100,8 @@ export const useUserProfileStore = create<UserProfileState>((set, get) => ({
           encouragementStyle: parsed.encouragementStyle,
           energyLevel: parsed.energyLevel,
           personaPrompt,
+          avatarUrl: parsed.avatarUrl,
+          mood: (parsed.mood as UserMood) ?? 'calm',
         };
 
         await persistProfile(profile);
@@ -116,6 +122,7 @@ export const useUserProfileStore = create<UserProfileState>((set, get) => ({
 
       const profile: UserProfile = {
         ...profileInput,
+        mood: (profileInput.mood as UserMood) ?? 'calm',
         personaPrompt,
       } as UserProfile;
 
@@ -139,6 +146,10 @@ export const useUserProfileStore = create<UserProfileState>((set, get) => ({
         ...current,
         ...updates,
       };
+
+      if (!merged.mood) {
+        merged.mood = 'calm';
+      }
 
       const personaPrompt = buildPersonaPrompt(merged);
       const nextProfile: UserProfile = {
