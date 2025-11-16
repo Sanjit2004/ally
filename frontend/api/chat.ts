@@ -43,7 +43,7 @@ export interface SendChatMessageInput {
   therapistMode?: boolean;
 }
 
-const getApiBaseUrl = (): string => {
+export const getApiBaseUrl = (): string => {
   const extra = Constants.expoConfig?.extra as { apiBaseUrl?: string } | undefined;
   return process.env.EXPO_PUBLIC_API_BASE_URL || extra?.apiBaseUrl || DEFAULT_API_BASE_URL;
 };

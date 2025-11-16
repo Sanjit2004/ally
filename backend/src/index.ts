@@ -4,6 +4,7 @@ import cors from "cors";
 import express from "express";
 
 import chatRouter from "./routes/chat";
+import ttsRouter from "./routes/tts";
 import logger from "./utils/logger";
 
 const app = express();
@@ -29,6 +30,7 @@ app.get("/health", (_req, res) => {
 });
 
 app.use("/chat", chatRouter);
+app.use("/tts", ttsRouter);
 
 app.use((err: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
   const message = err instanceof Error ? err.message : "Unexpected error";
