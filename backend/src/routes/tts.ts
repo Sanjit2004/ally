@@ -1,6 +1,6 @@
 import { Router } from "express";
 
-import { kokoroTTSService } from "../services/kokoroTTS";
+import { synthesizeSpeech } from "../services/tts";
 import logger from "../utils/logger";
 
 const ttsRouter = Router();
@@ -21,22 +21,13 @@ ttsRouter.post("/synthesize", async (req, res) => {
   }
 
   try {
-    const result = await kokoroTTSService.synthesize({
+    const result = await synthesizeSpeech({
       text,
       voice: body?.voice,
       speed: typeof body?.speed === "number" ? body.speed : undefined,
     });
 
-    const base64 = await kokoroTTSService.readAudioBase64(result.audioPath);
-
-    res.json({
-      audioBase64: base64,
-      mimeType: result.mimeType,
-      durationSeconds: result.durationSeconds,
-    });
-
-    // Fire and forget cleanup
-    void kokoroTTSService.deleteFile(result.audioPath);
+    res.json(result);
   } catch (error) {
     logger.error("Failed to synthesize speech", {
       error,
