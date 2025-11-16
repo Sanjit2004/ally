@@ -5,7 +5,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef } from 'react';
 import {
-  Alert,
   Animated,
   SafeAreaView,
   ScrollView,
@@ -143,19 +142,6 @@ export default function GetStartedScreen() {
   };
 
   const isDark = colorScheme === 'dark';
-
-  const handleDeveloperReset = async () => {
-    try {
-      await AsyncStorage.clear();
-      Alert.alert(
-        'Local data cleared',
-        'All saved profile, conversation, and onboarding data has been removed. Restart Ally to start fresh.'
-      );
-    } catch (error) {
-      console.error('Error clearing local data:', error);
-      Alert.alert('Reset failed', 'Unable to clear local data. Please try again.');
-    }
-  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}> 
@@ -331,22 +317,8 @@ export default function GetStartedScreen() {
             <Text style={styles.primaryButtonText}>Get Started</Text>
             <IconSymbol name="arrow.right" size={18} color="#ffffff" />
           </TouchableOpacity>
-        </View>
 
-        <View style={styles.footer}>
-          <Text style={[styles.footerText, { color: colors.text + '66' }]}>
-            By continuing, you agree to our Terms of Service.
-          </Text>
-          {__DEV__ && (
-            <TouchableOpacity
-              style={[styles.resetButton, { borderColor: colors.tint }]}
-              onPress={handleDeveloperReset}
-            >
-              <Text style={[styles.resetButtonText, { color: colors.tint }]}>
-                Reset local data
-              </Text>
-            </TouchableOpacity>
-          )}
+          <Text style={[styles.footerText, { color: colors.text + '66' }]}>By continuing, you agree to our Terms of Service.</Text>
         </View>
       </View>
     </ScrollView>
@@ -544,16 +516,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: 'center',
     lineHeight: 18,
-  },
-  resetButton: {
-    marginTop: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 18,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  resetButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
   },
 });
