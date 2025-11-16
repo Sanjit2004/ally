@@ -235,9 +235,9 @@ export default function ChatScreen() {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: userProfile 
-        ? `Hello ${userProfile.displayName}! I'm your chat assistant. How can I help you today?`
-        : 'Hello! I\'m your chat assistant. How can I help you today?',
+      text: userProfile
+        ? `Hello ${userProfile.displayName}! I'm Alex from UW-Madison. How are you doing today?`
+        : "Hello! I'm Alex from UW-Madison. How are you doing today?",
       isUser: false,
       timestamp: new Date(),
     },
@@ -654,3 +654,5 @@ ${systemPrompt}`
 }
 
 // All duplicated styles below this line have been removed.
+
+
