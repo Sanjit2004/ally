@@ -7,6 +7,7 @@ import React, { useEffect, useRef } from 'react';
 import {
   Animated,
   SafeAreaView,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -144,6 +145,7 @@ export default function GetStartedScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}> 
+    <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
       <View style={styles.content}>
         <Animated.View
           style={[
@@ -319,6 +321,7 @@ export default function GetStartedScreen() {
           <Text style={[styles.footerText, { color: colors.text + '66' }]}>By continuing, you agree to our Terms of Service.</Text>
         </View>
       </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -331,7 +334,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 24,
     paddingVertical: 24,
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
   },
   heroSection: {
     alignItems: 'center',
