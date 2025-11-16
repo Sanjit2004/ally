@@ -1,8 +1,9 @@
+import { sendChatRequest } from '@/api/chat';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors, PrimaryColors } from '@/constants/theme';
 import { FLOATING_TAB_BAR_OFFSET } from '@/constants/layout';
+import { Colors, PrimaryColors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useUserProfileStore } from '@/store/userProfileStore';
 import { logMessageSent } from '@/utils/analytics';
@@ -20,7 +21,6 @@ import {
   View
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { sendChatRequest } from '../../../api/chat';
 
 interface CallState {
   isActive: boolean;

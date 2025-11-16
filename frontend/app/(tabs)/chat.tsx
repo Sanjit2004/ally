@@ -1,3 +1,4 @@
+import { formatConversation, sendChatRequest } from '@/api/chat';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -28,7 +29,6 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { formatConversation, sendChatRequest } from '../../../api/chat';
 
 // NOTE: Styles are now defined *once* at the top.
 const styles = StyleSheet.create({
