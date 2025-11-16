@@ -45,6 +45,16 @@ const DEFAULT_AVATAR_CONFIG: AvatarConfig[] = [
     name: 'Ally Default',
     glb: 'https://models.readyplayer.me/69192da88e7eb12743562fa9.glb',
   },
+  {
+    id: 'avatar-2',
+    name: 'Professional',
+    glb: 'https://models.readyplayer.me/6919567b8e7eb127435b71ee.glb',
+  },
+  {
+    id: 'avatar-3',
+    name: 'Casual',
+    glb: 'https://models.readyplayer.me/691956e8672cca15c21616b0.glb',
+  },
 ];
 
 const parseAvatarConfig = (): AvatarConfig[] => {
@@ -76,12 +86,9 @@ const parseAvatarConfig = (): AvatarConfig[] => {
 const toPreviewUrl = (glbUrl: string, explicitPreview?: string): string => {
   if (explicitPreview) return explicitPreview;
 
-  const [base, query] = glbUrl.split('?');
+  const [base] = glbUrl.split('?');
   const pngBase = base.endsWith('.glb') ? base.replace(/\.glb$/i, '.png') : `${base}.png`;
-  if (query && query.length > 0) {
-    return `${pngBase}?${query}`;
-  }
-  return `${pngBase}?scene=fullbody&textureSize=512`;
+  return pngBase;
 };
 
 const ensureQueryParams = (glbUrl: string): string => {
@@ -134,6 +141,7 @@ export default function AvatarScreen() {
   const [viewerReady, setViewerReady] = useState(false);
   const [isTestingVoice, setIsTestingVoice] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [avatarLoading, setAvatarLoading] = useState(true);
 
   const sanitizedStoredAvatarUrl = useMemo(
     () => sanitizeStoredAvatarUrl(userProfile?.avatarUrl),
@@ -232,32 +240,54 @@ export default function AvatarScreen() {
     sendToViewer({ type: 'reaction', preset: 'assistantComplete', intensity: reactionIntensity });
   }, [reactionIntensity, sendToViewer]);
 
-  const handleToggleTestVoice = () => {
+  const handleToggleTestVoice = async () => {
     if (isTestingVoice) {
       Speech.stop();
       finishVoiceTest();
       return;
     }
 
-    const sampleLine = "Hey, it's Ally. I'm here and ready whenever you want to talk.";
-    setIsTestingVoice(true);
-    sendToViewer({ type: 'startLipSync', intensity: reactionIntensity });
+    try {
+      const sampleLine = "Hey, it's Ally. I'm here and ready whenever you want to talk.";
+      console.log('Starting voice test...');
+      setIsTestingVoice(true);
+      sendToViewer({ type: 'startLipSync', intensity: reactionIntensity });
 
-    Speech.speak(sampleLine, {
-      language: 'en-US',
-      rate: 0.95,
-      pitch: 1.05,
-      onBoundary: (event?: SpeechBoundaryEvent) => {
-        const charIndex = event?.charIndex ?? -1;
-        const viseme = guessVisemeFromText(sampleLine, charIndex);
-        if (viseme) {
-          sendToViewer({ type: 'viseme', ...viseme });
-        }
-      },
-      onDone: finishVoiceTest,
-      onStopped: finishVoiceTest,
-      onError: finishVoiceTest,
-    });
+      // Check if speech is available
+      const voices = await Speech.getAvailableVoicesAsync();
+      console.log('Available voices:', voices.length);
+
+      Speech.speak(sampleLine, {
+        language: 'en-US',
+        rate: 0.95,
+        pitch: 1.05,
+        onStart: () => {
+          console.log('Speech started');
+        },
+        onBoundary: (event?: SpeechBoundaryEvent) => {
+          const charIndex = event?.charIndex ?? -1;
+          const viseme = guessVisemeFromText(sampleLine, charIndex);
+          if (viseme) {
+            sendToViewer({ type: 'viseme', ...viseme });
+          }
+        },
+        onDone: () => {
+          console.log('Speech completed');
+          finishVoiceTest();
+        },
+        onStopped: () => {
+          console.log('Speech stopped');
+          finishVoiceTest();
+        },
+        onError: (error) => {
+          console.error('Speech error:', error);
+          finishVoiceTest();
+        },
+      });
+    } catch (error) {
+      console.error('Error in voice test:', error);
+      finishVoiceTest();
+    }
   };
 
   const handleSave = async () => {
@@ -277,14 +307,23 @@ export default function AvatarScreen() {
     (event: WebViewMessageEvent) => {
       try {
         const data = JSON.parse(event.nativeEvent.data);
+        console.log('WebView message received:', data.type);
         if (data.type === 'ready') {
+          console.log('WebView ready, loading avatar:', selectedAvatarUrl);
           setViewerReady(true);
           sendToViewer({ type: 'configure', moodIntensity: reactionIntensity });
           if (selectedAvatarUrl) {
+            setAvatarLoading(true);
             sendToViewer({ type: 'loadAvatar', url: selectedAvatarUrl });
           }
         } else if (data.type === 'error') {
-          console.warn('Avatar viewer error:', data.message);
+          console.error('Avatar viewer error:', data.message);
+          setAvatarLoading(false);
+        } else if (data.type === 'avatarLoaded') {
+          console.log('Avatar loaded successfully:', data.url);
+          setAvatarLoading(false);
+        } else if (data.type === 'debug') {
+          console.log('[WebView Debug]:', data.message);
         }
       } catch (error) {
         // ignore non-JSON payloads
@@ -364,6 +403,10 @@ export default function AvatarScreen() {
                       source={{ uri: option.previewUrl }}
                       style={styles.avatarPreview}
                       resizeMode="cover"
+                      defaultSource={require('@/assets/images/partial-react-logo.png')}
+                      onError={(error) => {
+                        console.log('Image load error for:', option.previewUrl);
+                      }}
                     />
                     {isSelected && (
                       <View style={[styles.selectedBadge, { backgroundColor: colors.tint }]}
@@ -412,9 +455,32 @@ export default function AvatarScreen() {
                 source={{ html: VIEWER_HTML }}
                 scrollEnabled={false}
                 javaScriptEnabled
+                domStorageEnabled
+                allowFileAccess
+                allowUniversalAccessFromFileURLs
+                mixedContentMode="always"
                 setSupportMultipleWindows={false}
                 onMessage={handleViewerMessage}
+                onError={(syntheticEvent) => {
+                  const { nativeEvent } = syntheticEvent;
+                  console.error('WebView error:', nativeEvent);
+                }}
+                onHttpError={(syntheticEvent) => {
+                  const { nativeEvent } = syntheticEvent;
+                  console.error('WebView HTTP error:', nativeEvent);
+                }}
+                onLoadEnd={() => {
+                  console.log('WebView loaded');
+                }}
               />
+              {avatarLoading && (
+                <View style={styles.loadingOverlay}>
+                  <ActivityIndicator size="large" color={colors.tint} />
+                  <ThemedText style={[styles.loadingText, { color: PrimaryColors.textSecondary }]}>
+                    Loading avatar...
+                  </ThemedText>
+                </View>
+              )}
             </View>
 
             <View style={styles.voiceRow}>
@@ -617,6 +683,21 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 8 },
     elevation: 6,
   },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  loadingText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
 });
 
 const VIEWER_HTML = `<!DOCTYPE html>
@@ -639,39 +720,80 @@ const VIEWER_HTML = `<!DOCTYPE html>
         display: block;
         width: 100% !important;
         height: 100% !important;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      }
+      #debug {
+        display: none !important;
       }
     </style>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/examples/js/loaders/GLTFLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/examples/js/loaders/DRACOLoader.js"></script>
   </head>
   <body>
+    <div id="debug"></div>
     <canvas id="canvas"></canvas>
-    <script>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/"
+        }
+      }
+    </script>
+    <script type="module">
+      const debugEl = document.getElementById('debug');
+      function debug(msg) {
+        console.log(msg);
+        window.ReactNativeWebView?.postMessage(JSON.stringify({ type: 'debug', message: msg }));
+      }
+      
+      debug('WebView script starting...');
+      
+      try {
+        const THREE = await import('three');
+        debug('Three.js loaded: ' + (THREE ? 'YES' : 'NO'));
+        
+        const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
+        debug('GLTFLoader loaded: ' + (GLTFLoader ? 'YES' : 'NO'));
+        
+        const { DRACOLoader } = await import('three/addons/loaders/DRACOLoader.js');
+        debug('DRACOLoader loaded: ' + (DRACOLoader ? 'YES' : 'NO'));
+
       const renderer = new THREE.WebGLRenderer({
         canvas: document.getElementById('canvas'),
         alpha: true,
         antialias: true,
       });
       renderer.setPixelRatio(window.devicePixelRatio || 1);
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.2;
       renderer.setClearColor(0x000000, 0);
       renderer.setSize(window.innerWidth, window.innerHeight);
 
       const scene = new THREE.Scene();
-      const camera = new THREE.PerspectiveCamera(32, window.innerWidth / window.innerHeight, 0.1, 100);
-      camera.position.set(0, 1.55, 2.7);
+      const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+      camera.position.set(0, 1.65, 2.5);
+      camera.lookAt(0, 1.5, 0);
 
-      const hemi = new THREE.HemisphereLight(0xffffff, 0x2c3e50, 1.6);
-      scene.add(hemi);
-      const dir = new THREE.DirectionalLight(0xffffff, 1.1);
-      dir.position.set(0, 2.2, 2.8);
-      scene.add(dir);
+      // Better lighting setup
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+      scene.add(ambientLight);
+      
+      const keyLight = new THREE.DirectionalLight(0xffffff, 1.5);
+      keyLight.position.set(2, 3, 3);
+      scene.add(keyLight);
+      
+      const fillLight = new THREE.DirectionalLight(0xffffff, 0.5);
+      fillLight.position.set(-2, 2, -1);
+      scene.add(fillLight);
+      
+      const backLight = new THREE.DirectionalLight(0xffffff, 0.3);
+      backLight.position.set(0, 3, -3);
+      scene.add(backLight);
 
-      const loader = new THREE.GLTFLoader();
+      const loader = new GLTFLoader();
       loader.setCrossOrigin('anonymous');
-      loader.setResourcePath('https://models.readyplayer.me/');
 
-      const dracoLoader = new THREE.DRACOLoader();
+      const dracoLoader = new DRACOLoader();
       dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
       loader.setDRACOLoader(dracoLoader);
       const clock = new THREE.Clock();
@@ -689,6 +811,7 @@ const VIEWER_HTML = `<!DOCTYPE html>
       let baseMoodIntensity = 0.8;
       let reactionState = null;
       let baseRotationX = 0;
+      let basePositionY = 0;
 
       const morphMeshes = [];
 
@@ -792,19 +915,34 @@ const VIEWER_HTML = `<!DOCTYPE html>
       }
 
       function loadAvatar(url) {
-        if (!url) return;
+        if (!url) {
+          console.error('No avatar URL provided');
+          return;
+        }
+        console.log('Loading avatar from:', url);
         loader.load(
           url,
           (gltf) => {
+            debug('Avatar GLTF loaded, adding to scene...');
             if (avatar) {
               scene.remove(avatar);
             }
 
             avatar = gltf.scene;
-            avatar.position.set(0, -1.55, 0);
+            
+            // Calculate bounding box to ensure proper positioning
+            const box = new THREE.Box3().setFromObject(avatar);
+            const size = box.getSize(new THREE.Vector3());
+            const center = box.getCenter(new THREE.Vector3());
+            
+            // Position avatar so feet are at y=0 and centered
+            basePositionY = -center.y - box.min.y;
+            avatar.position.set(0, basePositionY, 0);
             avatar.rotation.set(0, 0, 0);
             baseRotationX = 0;
             scene.add(avatar);
+            
+            debug('Avatar added! Size: ' + size.y.toFixed(2) + 'm, Children: ' + avatar.children.length);
 
             cacheMorphTargets(avatar);
             resetBlink();
@@ -821,11 +959,18 @@ const VIEWER_HTML = `<!DOCTYPE html>
                 action.play();
               }
             }
-          },
-          undefined,
-          (error) => {
+            
             window.ReactNativeWebView?.postMessage(
-              JSON.stringify({ type: 'error', message: error.message })
+              JSON.stringify({ type: 'avatarLoaded', url })
+            );
+          },
+          (progress) => {
+            console.log('Loading progress:', (progress.loaded / progress.total * 100).toFixed(2) + '%');
+          },
+          (error) => {
+            console.error('Avatar loading error:', error);
+            window.ReactNativeWebView?.postMessage(
+              JSON.stringify({ type: 'error', message: error.message || 'Failed to load avatar' })
             );
           }
         );
@@ -891,7 +1036,7 @@ const VIEWER_HTML = `<!DOCTYPE html>
           avatar.rotation.y = sway;
 
           const breathe = Math.sin(lookPhase * 0.9) * 0.01 * baseMoodIntensity;
-          avatar.position.y = -1.55 + breathe;
+          avatar.position.y = basePositionY + breathe;
         }
 
         updateBlink(delta);
@@ -946,6 +1091,14 @@ const VIEWER_HTML = `<!DOCTYPE html>
       window.addEventListener('resize', handleResize);
 
       window.ReactNativeWebView?.postMessage(JSON.stringify({ type: 'ready' }));
+      
+      } catch (error) {
+        debug('ERROR: ' + error.message);
+        window.ReactNativeWebView?.postMessage(JSON.stringify({ 
+          type: 'error', 
+          message: 'Failed to initialize: ' + error.message 
+        }));
+      }
     </script>
   </body>
 </html>`;
