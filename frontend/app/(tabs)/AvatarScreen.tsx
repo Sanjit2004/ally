@@ -771,7 +771,9 @@ const VIEWER_HTML = `<!DOCTYPE html>
 
       const scene = new THREE.Scene();
       const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
-      camera.position.set(0, 1.65, 2.5);
+      
+      // Initial camera position. We will adjust this after loading the avatar.
+      camera.position.set(0, 1.65, 2.5); 
       camera.lookAt(0, 1.5, 0);
 
       // Better lighting setup
@@ -805,7 +807,7 @@ const VIEWER_HTML = `<!DOCTYPE html>
       let lipSyncActive = false;
       let visemeTimeout = null;
       let blinkState = 'idle';
-      let blinkTimer = 2 + Math.random() * 3;
+      let blinkTimer = 3 + Math.random() * 4; // Blink every 3-7 seconds (more natural)
       let blinkElapsed = 0;
       let lookPhase = 0;
       let baseMoodIntensity = 0.8;
@@ -889,6 +891,10 @@ const VIEWER_HTML = `<!DOCTYPE html>
 
         if (preset === 'assistantComplete') {
           setMorph(['browOuterUpLeft', 'browOuterUpRight'], 0.6 * reactionState.intensity);
+        } else if (preset === 'userSelect') {
+          // Friendly nod and smile when selected
+          setMorph(['mouthSmileLeft', 'mouthSmileRight'], 0.4 * reactionState.intensity);
+          setMorph(['eyeSquintLeft', 'eyeSquintRight'], 0.2 * reactionState.intensity);
         }
       }
 
@@ -900,16 +906,21 @@ const VIEWER_HTML = `<!DOCTYPE html>
 
         switch (reactionState.preset) {
           case 'userSelect':
-            avatar.rotation.x = baseRotationX + eased * 0.22 * reactionState.intensity;
+            // Gentle nod forward
+            avatar.rotation.x = baseRotationX + eased * 0.12 * reactionState.intensity;
             break;
           case 'assistantComplete':
+            // Slight head lift
             avatar.rotation.x = baseRotationX + eased * 0.08 * reactionState.intensity;
             break;
         }
 
         if (reactionState.elapsed >= reactionState.duration) {
           avatar.rotation.x = baseRotationX;
+          // Fade out expressions
           setMorph(['browOuterUpLeft', 'browOuterUpRight'], 0);
+          setMorph(['mouthSmileLeft', 'mouthSmileRight'], 0);
+          setMorph(['eyeSquintLeft', 'eyeSquintRight'], 0);
           reactionState = null;
         }
       }
@@ -919,7 +930,7 @@ const VIEWER_HTML = `<!DOCTYPE html>
           console.error('No avatar URL provided');
           return;
         }
-        console.log('Loading avatar from:', url);
+          console.log('Loading avatar from:', url);
         loader.load(
           url,
           (gltf) => {
@@ -930,23 +941,41 @@ const VIEWER_HTML = `<!DOCTYPE html>
 
             avatar = gltf.scene;
             
-            // Calculate bounding box to ensure proper positioning
+            // --- FIX: Center and frame the avatar ---
+            // Calculate bounding box to ensure proper positioning and framing
             const box = new THREE.Box3().setFromObject(avatar);
             const size = box.getSize(new THREE.Vector3());
             const center = box.getCenter(new THREE.Vector3());
             
-            // Position avatar so feet are at y=0 and centered
-            basePositionY = -center.y - box.min.y;
+            // Position avatar so feet are at y=0
+            basePositionY = -box.min.y;
             avatar.position.set(0, basePositionY, 0);
             avatar.rotation.set(0, 0, 0);
             baseRotationX = 0;
             scene.add(avatar);
             
+            // Frame the face and upper body - close and personal
+            // Target the face area which is roughly 85-90% up the avatar
+            const faceHeight = size.y * 0.88; // Face level
+            const cameraDistance = 1.2; // Much closer for better view
+            
+            // Position camera to focus on face
+            camera.position.set(0, faceHeight, cameraDistance);
+            camera.lookAt(0, faceHeight - 0.1, 0); // Look slightly below eyes for natural feel
+            
+            // --- END FIX ---
+
             debug('Avatar added! Size: ' + size.y.toFixed(2) + 'm, Children: ' + avatar.children.length);
 
             cacheMorphTargets(avatar);
             resetBlink();
             clearVisemes();
+            
+            // Add a welcoming smile expression
+            setTimeout(() => {
+              setMorph(['mouthSmileLeft', 'mouthSmileRight'], 0.3);
+              setMorph(['eyeSquintLeft', 'eyeSquintRight'], 0.15);
+            }, 500);
 
             mixer = null;
             if (gltf.animations && gltf.animations.length) {
@@ -1017,7 +1046,7 @@ const VIEWER_HTML = `<!DOCTYPE html>
             setMorph(['eyeBlinkLeft', 'eyeBlinkRight'], Math.max(0, openProgress));
             if (openProgress <= 0) {
               blinkState = 'idle';
-              blinkTimer = 2 + Math.random() * 4;
+              blinkTimer = 3 + Math.random() * 4; // Next blink in 3-7 seconds
             }
             break;
         }
@@ -1031,11 +1060,16 @@ const VIEWER_HTML = `<!DOCTYPE html>
         }
 
         if (avatar) {
-          lookPhase += delta * (0.6 + baseMoodIntensity * 0.4);
-          const sway = Math.sin(lookPhase) * 0.15 * baseMoodIntensity;
-          avatar.rotation.y = sway;
+          lookPhase += delta * 0.5; // Slower, more natural movement
+          
+          // Subtle head tilt and rotation - more human-like
+          const headSway = Math.sin(lookPhase * 0.8) * 0.03; // Very subtle side-to-side
+          const headTilt = Math.sin(lookPhase * 0.6) * 0.02; // Slight tilt
+          avatar.rotation.y = headSway;
+          avatar.rotation.z = headTilt;
 
-          const breathe = Math.sin(lookPhase * 0.9) * 0.01 * baseMoodIntensity;
+          // Gentle breathing motion
+          const breathe = Math.sin(lookPhase * 1.2) * 0.008;
           avatar.position.y = basePositionY + breathe;
         }
 
