@@ -20,6 +20,17 @@ export async function buildSystemPrompt(userProfile: UserProfile | null, therapi
     : '';
 
   const checkInNote = getCheckInNote(userProfile.checkInFrequency);
+  const supportFocusNote = getSupportFocusNote(userProfile.supportFocus);
+  const interestsNote = getInterestsNote(userProfile.interests);
+  const dailyChallengeNote = userProfile.dailyChallenge
+    ? `\n\n## Current Challenge\nThe user is actively working on: "${userProfile.dailyChallenge}". Ask how this is going and offer practical encouragement connected to this goal.`
+    : '';
+  const encouragementStyleNote = userProfile.encouragementStyle
+    ? getEncouragementStyleNote(userProfile.encouragementStyle)
+    : '';
+  const energyLevelNote = typeof userProfile.energyLevel === 'number'
+    ? getEnergyLevelNote(userProfile.energyLevel)
+    : '';
   const therapistModeNote = therapistMode ? getTherapistModeInstructions() : '';
   
   // Get top 3 most salient memories
@@ -46,7 +57,7 @@ export async function buildSystemPrompt(userProfile: UserProfile | null, therapi
 - Check-in Frequency: ${userProfile.checkInFrequency}
 
 ## Tone Guidelines
-${toneInstructions}${sensitiveTopicsNote}${checkInNote}${therapistModeNote}${memoryContext}
+${toneInstructions}${sensitiveTopicsNote}${checkInNote}${supportFocusNote}${interestsNote}${dailyChallengeNote}${encouragementStyleNote}${energyLevelNote}${therapistModeNote}${memoryContext}
 
 Remember to address the user as "${userProfile.displayName}" and keep their goal of "${userProfile.mainGoal}" in mind during conversations.`;
 }
@@ -135,6 +146,56 @@ function getCheckInNote(frequency: 'daily' | 'every-other-day' | 'weekly' | 'min
   };
 
   return frequencyMap[frequency] || '';
+}
+
+function getSupportFocusNote(focusAreas?: string[]): string {
+  if (!focusAreas || focusAreas.length === 0) {
+    return '';
+  }
+
+  const bullets = focusAreas.map(area => `- ${area}`).join('\n');
+  return `\n\n## Priority Support Focus
+The user specifically wants help with:
+${bullets}
+Weave gentle check-ins about these areas into conversation and celebrate even small wins related to them.`;
+}
+
+function getInterestsNote(interests?: string[]): string {
+  if (!interests || interests.length === 0) {
+    return '';
+  }
+
+  const list = interests.map(interest => `- ${interest}`).join('\n');
+  return `\n\n## Personal Interests & Joy Triggers
+The user mentioned these hobbies/interests:
+${list}
+Ask curious follow-up questions about these topics periodically and, when appropriate, connect advice or reflections back to them.`;
+}
+
+function getEncouragementStyleNote(style: 'motivational' | 'practical' | 'humorous'): string {
+  const styleMap = {
+    motivational: '\n\nPreferred Encouragement Style: Motivational. Use uplifting language, focus on strengths, and remind the user of their resilience when offering support.',
+    practical: '\n\nPreferred Encouragement Style: Practical. Offer clear, actionable steps or reflective prompts that feel grounded and doable.',
+    humorous: '\n\nPreferred Encouragement Style: Light & humorous. When appropriate, use gentle humor or playful framing to keep the tone light while still being supportive.',
+  };
+
+  return styleMap[style] || '';
+}
+
+function getEnergyLevelNote(level: number): string {
+  if (Number.isNaN(level)) {
+    return '';
+  }
+
+  if (level <= 3) {
+    return '\n\nEnergy Level: Low. Keep responses gentle and simplify suggestions so they feel manageable when the user has limited energy.';
+  }
+
+  if (level >= 7) {
+    return '\n\nEnergy Level: High. Feel free to match their momentum with slightly more energetic encouragement and collaborative planning.';
+  }
+
+  return '\n\nEnergy Level: Moderate. Maintain a balanced tone and suggest steady, sustainable steps forward.';
 }
 
 /**
