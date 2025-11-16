@@ -10,8 +10,9 @@ import persona from '../persona.json';
  */
 export async function buildSystemPrompt(userProfile: UserProfile | null, therapistMode?: boolean): Promise<string> {
   if (!userProfile) {
-    // Return basic persona if no user profile
-    return buildBasePrompt(therapistMode);
+    const prompt = buildBasePrompt(therapistMode);
+    console.log('[SystemPrompt] No profile, using base prompt:', prompt);
+    return prompt;
   }
 
   const toneInstructions = getToneInstructions(userProfile.preferredTone);
@@ -48,7 +49,7 @@ export async function buildSystemPrompt(userProfile: UserProfile | null, therapi
     console.error('Error loading memories for system prompt:', error);
   }
 
-  return `${buildBasePrompt(therapistMode)}
+  const finalPrompt = `${buildBasePrompt(therapistMode)}
 
 ## User Context
 - Name: ${userProfile.displayName}
@@ -60,6 +61,8 @@ export async function buildSystemPrompt(userProfile: UserProfile | null, therapi
 ${toneInstructions}${sensitiveTopicsNote}${checkInNote}${supportFocusNote}${interestsNote}${dailyChallengeNote}${encouragementStyleNote}${energyLevelNote}${therapistModeNote}${memoryContext}
 
 Remember to address the user as "${userProfile.displayName}" and keep their goal of "${userProfile.mainGoal}" in mind during conversations.`;
+  console.log('[SystemPrompt] Built prompt for', userProfile.displayName, finalPrompt);
+  return finalPrompt;
 }
 
 /**
