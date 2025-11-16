@@ -251,7 +251,7 @@ export default function AvatarScreen() {
     }
 
     try {
-      const sampleLine = "Hey, it's Ally. I'm here and ready whenever you want to talk.";
+      const sampleLine = "Hey, it's Alex. I'm here and ready whenever you want to talk.";
       console.log('Starting Kokoro voice test...');
       setIsTestingVoice(true);
       sendToViewer({ type: 'startLipSync', intensity: reactionIntensity });

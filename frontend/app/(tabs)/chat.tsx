@@ -16,17 +16,17 @@ import { useRouter } from 'expo-router';
 import * as Speech from 'expo-speech';
 import { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  KeyboardAvoidingView,
-  Platform,
-  SafeAreaView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    KeyboardAvoidingView,
+    Platform,
+    SafeAreaView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -319,10 +319,10 @@ export default function ChatScreen() {
       const systemPrompt = await buildSystemPrompt(userProfile, therapistMode);
 
       const personaInstruction = userProfile?.personaPrompt
-        ? `You are Ally, the user’s personal support assistant. Here is info about the user:
+        ? `You are Alex, the user's closest friend at UW–Madison. Here is info about the user:
 ${userProfile.personaPrompt}
 
-Always keep this context in mind.`
+Always keep this context in mind and stay in character as Alex.`
         : undefined;
 
       const fullSystemPrompt = personaInstruction

@@ -6,6 +6,52 @@ const DEFAULT_TTS_VOICE = process.env.OPENAI_TTS_VOICE ?? "alloy";
 const DEFAULT_TTS_MODEL = process.env.OPENAI_TTS_MODEL ?? "tts-1";
 const DEFAULT_TTS_SPEED = Number(process.env.OPENAI_TTS_SPEED ?? 1.0);
 
+const OPENAI_SUPPORTED_VOICES = new Set<string>([
+  "alloy",
+  "echo",
+  "fable",
+  "onyx",
+  "nova",
+  "shimmer",
+  "coral",
+  "verse",
+  "ballad",
+  "ash",
+  "sage",
+  "marin",
+  "cedar",
+]);
+
+const KOKORO_TO_OPENAI_VOICE_MAP: Record<string, string> = {
+  af_bella: "alloy",
+};
+
+function resolveVoice(requestedVoice?: string): string {
+  const trimmed = requestedVoice?.trim().toLowerCase();
+
+  if (trimmed) {
+    if (OPENAI_SUPPORTED_VOICES.has(trimmed)) {
+      return trimmed;
+    }
+
+    const mapped = KOKORO_TO_OPENAI_VOICE_MAP[trimmed];
+    if (mapped) {
+      logger.info("Mapped unsupported TTS voice to OpenAI voice", {
+        requestedVoice: trimmed,
+        mappedVoice: mapped,
+      });
+      return mapped;
+    }
+
+    logger.warn("Unsupported TTS voice requested, falling back to default", {
+      requestedVoice: trimmed,
+      defaultVoice: DEFAULT_TTS_VOICE,
+    });
+  }
+
+  return DEFAULT_TTS_VOICE;
+}
+
 const openAiClient =
   process.env.OPENAI_API_KEY?.trim().length
     ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
@@ -28,7 +74,7 @@ export const synthesizeSpeech = async (options: SynthesizeOptions): Promise<Synt
     throw new Error("OPENAI_API_KEY must be set to use TTS");
   }
 
-  const voice = options.voice?.trim() || DEFAULT_TTS_VOICE;
+  const voice = resolveVoice(options.voice);
   const speed = typeof options.speed === "number" ? options.speed : DEFAULT_TTS_SPEED;
 
   if (!options.text?.trim()) {

@@ -9,8 +9,8 @@ import { useUserProfileStore } from '@/store/userProfileStore';
 import { logMessageSent } from '@/utils/analytics';
 import { saveMessage } from '@/utils/conversationStorage';
 import { getTTSParametersForMood, loadMoodState, updateMoodFromUserSentiment } from '@/utils/moodEngine';
-import { playKokoroSpeech, type SpeechPlaybackHandle } from '@/utils/ttsPlayer';
 import { buildSystemPrompt } from '@/utils/systemPrompt';
+import { playKokoroSpeech, type SpeechPlaybackHandle } from '@/utils/ttsPlayer';
 import { useNavigation } from '@react-navigation/native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -87,7 +87,7 @@ export default function CallScreen() {
 
   const startCall = useCallback(async () => {
     try {
-      const greeting = `Hello ${userProfile?.displayName || 'there'}! I'm ready to chat. How are you doing today?`;
+      const greeting = `Hey ${userProfile?.displayName || 'friend'}! It's Alex from UW–Madison, ready to chat. How are you doing today?`;
 
       const mood = await loadMoodState();
       const ttsParams = getTTSParametersForMood(mood.currentMood);
@@ -162,10 +162,23 @@ export default function CallScreen() {
 
       logMessageSent(userId, transcript.length);
 
-      // Get AI response
+      // Get AI response with persona context
       const systemPrompt = await buildSystemPrompt(userProfile);
+      const personaInstruction = userProfile?.personaPrompt
+        ? `You are Alex, the user's closest friend at UW–Madison. Here is info about the user:
+${userProfile.personaPrompt}
+
+Always keep this context in mind and stay in character as Alex.`
+        : undefined;
+
+      const fullSystemPrompt = personaInstruction
+        ? `${personaInstruction}
+
+${systemPrompt}`
+        : systemPrompt;
+
       const response = await sendChatRequest(
-        systemPrompt,
+        fullSystemPrompt,
         [{ role: 'user', content: transcript }]
       );
 
@@ -277,8 +290,8 @@ export default function CallScreen() {
         {/* Wave Animation */}
         <WaveAnimation />
 
-        {/* Ally Name */}
-        <ThemedText type="title" style={styles.allyName}>Ally</ThemedText>
+        {/* Alex Name */}
+        <ThemedText type="title" style={styles.allyName}>Alex</ThemedText>
         <ThemedText style={styles.status}>
           {callState.isListening ? 'Listening...' : 'Connected'}
         </ThemedText>
@@ -291,10 +304,10 @@ export default function CallScreen() {
           </View>
         )}
 
-        {/* Ally Response */}
+        {/* Alex Response */}
         {callState.allyResponse && (
           <View style={[styles.responseBox, { backgroundColor: colors.surface }]}>
-            <ThemedText style={styles.responseLabel}>Ally:</ThemedText>
+            <ThemedText style={styles.responseLabel}>Alex:</ThemedText>
             <ThemedText style={styles.responseText}>{callState.allyResponse}</ThemedText>
           </View>
         )}
@@ -333,17 +346,10 @@ export default function CallScreen() {
         <TouchableOpacity
           style={[styles.controlButton, { backgroundColor: colors.tint }]}
           onPress={() => {
-            setCallState(prev => ({
-              ...prev,
-              isListening: !prev.isListening,
-            }));
-            // In a real app, this would trigger speech recognition
-            if (!callState.isListening) {
-              // Simulate user input for demo
-              setTimeout(() => {
-                handleUserInput('I\'m doing well, thank you for asking!');
-              }, 2000);
-            }
+            Alert.alert(
+              'Voice Input Unavailable',
+              "To speak with Ally you'll need a custom Expo build that bundles speech recognition. For now, feel free to chat via the text tab."
+            );
           }}
         >
           <IconSymbol

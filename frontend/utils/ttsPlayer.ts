@@ -60,6 +60,8 @@ export async function playKokoroSpeech(options: PlaySpeechOptions): Promise<Spee
 
   const charIndices = buildCharIndices(trimmedText);
   let lastVisemeIndex = -1;
+  let lastVisemeShape: VisemeCommand['shape'] | null = null;
+  let lastVisemeAmount = 0;
   let hasStarted = false;
   let hasFinished = false;
   let paused = false;
@@ -77,10 +79,15 @@ export async function playKokoroSpeech(options: PlaySpeechOptions): Promise<Spee
       await sound.stopAsync().catch(() => undefined);
       await sound.unloadAsync().catch(() => undefined);
     } finally {
+      lastVisemeShape = null;
+      lastVisemeAmount = 0;
       onViseme?.(REST_VISEME);
       onFinish?.();
     }
   };
+
+  // Prime the viewer with a neutral pose before playback begins
+  onViseme?.(REST_VISEME);
 
   sound.setOnPlaybackStatusUpdate((status) => {
     if (hasFinished) {
@@ -123,13 +130,19 @@ export async function playKokoroSpeech(options: PlaySpeechOptions): Promise<Spee
     const position = playbackStatus.positionMillis ?? 0;
     const progress = Math.min(position / durationMs, 0.9999);
     const targetIndex = Math.min(charIndices.length - 1, Math.max(0, Math.floor(progress * charIndices.length)));
+    const estimatedVisemeDuration = Math.max(80, Math.round(durationMs / Math.max(charIndices.length, 1)));
 
     if (targetIndex > lastVisemeIndex) {
       for (let index = lastVisemeIndex + 1; index <= targetIndex; index += 1) {
         const charIndex = charIndices[index];
         const viseme = guessVisemeFromText(trimmedText, charIndex);
         if (viseme) {
-          onViseme?.(viseme);
+          const shouldEmit = viseme.shape !== lastVisemeShape || Math.abs(viseme.amount - lastVisemeAmount) > 0.05;
+          if (shouldEmit) {
+            onViseme?.({ ...viseme, duration: estimatedVisemeDuration });
+            lastVisemeShape = viseme.shape;
+            lastVisemeAmount = viseme.amount;
+          }
         }
       }
       lastVisemeIndex = targetIndex;

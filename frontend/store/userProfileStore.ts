@@ -1,10 +1,13 @@
-import { create } from 'zustand';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
-  generatePersonaPrompt,
-  generatePersonaPromptFromLegacy,
-  PersonaProfileInput,
+    cancelCheckInNotification,
+    ensureCheckInNotification,
+} from '@/utils/notifications';
+import {
+    generatePersonaPrompt,
+    generatePersonaPromptFromLegacy
 } from '@/utils/persona';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { create } from 'zustand';
 
 export type UserMood = 'calm' | 'curious' | 'supportive' | 'focused';
 
@@ -106,6 +109,8 @@ export const useUserProfileStore = create<UserProfileState>((set, get) => ({
 
         await persistProfile(profile);
         set({ userProfile: profile, isLoading: false });
+
+        await ensureCheckInNotification(profile.checkInFrequency, profile.displayName || 'User');
       } else {
         set({ userProfile: null, isLoading: false });
       }
@@ -128,6 +133,8 @@ export const useUserProfileStore = create<UserProfileState>((set, get) => ({
 
       await persistProfile(profile);
       set({ userProfile: profile });
+
+      await ensureCheckInNotification(profile.checkInFrequency, profile.displayName);
     } catch (error) {
       console.error('Error saving profile:', error);
       throw error;
@@ -159,6 +166,13 @@ export const useUserProfileStore = create<UserProfileState>((set, get) => ({
 
       await persistProfile(nextProfile);
       set({ userProfile: nextProfile });
+
+      if (
+        updates.checkInFrequency &&
+        updates.checkInFrequency !== current.checkInFrequency
+      ) {
+        await ensureCheckInNotification(nextProfile.checkInFrequency, nextProfile.displayName);
+      }
     } catch (error) {
       console.error('Error updating profile:', error);
     }
@@ -186,6 +200,7 @@ export const useUserProfileStore = create<UserProfileState>((set, get) => ({
     try {
       await AsyncStorage.removeItem(STORAGE_KEY);
       set({ userProfile: null });
+      await cancelCheckInNotification();
     } catch (error) {
       console.error('Error clearing profile:', error);
     }
