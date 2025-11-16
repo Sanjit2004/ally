@@ -9,10 +9,10 @@ import { useUserProfileStore } from '@/store/userProfileStore';
 import { logMessageSent } from '@/utils/analytics';
 import { saveMessage } from '@/utils/conversationStorage';
 import { getTTSParametersForMood, loadMoodState, updateMoodFromUserSentiment } from '@/utils/moodEngine';
+import { playKokoroSpeech, type SpeechPlaybackHandle } from '@/utils/ttsPlayer';
 import { buildSystemPrompt } from '@/utils/systemPrompt';
 import { useNavigation } from '@react-navigation/native';
-import * as Speech from 'expo-speech';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -52,23 +52,71 @@ export default function CallScreen() {
   const [wavePhase, setWavePhase] = useState(0);
   const callDurationInterval = useRef<NodeJS.Timeout | null>(null);
   const waveAnimationInterval = useRef<NodeJS.Timeout | null>(null);
+  const speechPlaybackHandle = useRef<SpeechPlaybackHandle | null>(null);
 
-  // Initialize call
+  const stopCurrentSpeech = useCallback(async () => {
+    if (!speechPlaybackHandle.current) {
+      return;
+    }
+
+    const handle = speechPlaybackHandle.current;
+    speechPlaybackHandle.current = null;
+    await handle.stop().catch(() => undefined);
+  }, []);
+
+  const playSpeechWithKokoro = useCallback(
+    async (text: string, rate: number) => {
+      const clampedSpeed = Number.isFinite(rate) ? Math.min(Math.max(rate, 0.75), 1.25) : 1;
+      await stopCurrentSpeech();
+
+      speechPlaybackHandle.current = await playKokoroSpeech({
+        text,
+        voice: 'af_bella',
+        speed: clampedSpeed,
+        onError: (error) => {
+          console.error('Kokoro playback error:', error);
+          speechPlaybackHandle.current = null;
+        },
+        onFinish: () => {
+          speechPlaybackHandle.current = null;
+        },
+      });
+    },
+    [stopCurrentSpeech]
+  );
+
+  const startCall = useCallback(async () => {
+    try {
+      const greeting = `Hello ${userProfile?.displayName || 'there'}! I'm ready to chat. How are you doing today?`;
+
+      const mood = await loadMoodState();
+      const ttsParams = getTTSParametersForMood(mood.currentMood);
+
+      await playSpeechWithKokoro(greeting, ttsParams.rate);
+
+      setCallState((prev) => ({
+        ...prev,
+        allyResponse: greeting,
+      }));
+    } catch (error) {
+      console.error('Error starting call:', error);
+      Alert.alert('Error', 'Failed to start call');
+    }
+  }, [playSpeechWithKokoro, userProfile?.displayName]);
+
   useEffect(() => {
     startCall();
-    
+
     return () => {
       if (callDurationInterval.current) clearInterval(callDurationInterval.current);
       if (waveAnimationInterval.current) clearInterval(waveAnimationInterval.current);
-      Speech.stop?.();
+      void stopCurrentSpeech();
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [startCall, stopCurrentSpeech]);
 
-  // Update call duration
   useEffect(() => {
     callDurationInterval.current = setInterval(() => {
-      setCallState(prev => ({
+      setCallState((prev) => ({
         ...prev,
         callDuration: prev.callDuration + 1,
       }));
@@ -82,7 +130,7 @@ export default function CallScreen() {
   // Wave animation
   useEffect(() => {
     waveAnimationInterval.current = setInterval(() => {
-      setWavePhase(prev => (prev + 1) % 360);
+      setWavePhase((prev) => (prev + 1) % 360);
     }, 50) as unknown as NodeJS.Timeout;
 
     return () => {
@@ -90,37 +138,11 @@ export default function CallScreen() {
     };
   }, []);
 
-  const startCall = async () => {
-    try {
-      // Greet user
-      const greeting = `Hello ${userProfile?.displayName || 'there'}! I'm ready to chat. How are you doing today?`;
-      
-      // Get mood-adjusted TTS parameters
-      const mood = await loadMoodState();
-      const ttsParams = getTTSParametersForMood(mood.currentMood);
-      
-      // Speak greeting
-      await Speech.speak(greeting, {
-        language: 'en-US',
-        rate: ttsParams.rate,
-        pitch: ttsParams.pitch,
-      });
-      
-      setCallState(prev => ({
-        ...prev,
-        allyResponse: greeting,
-      }));
-    } catch (error) {
-      console.error('Error starting call:', error);
-      Alert.alert('Error', 'Failed to start call');
-    }
-  };
-
   const handleUserInput = async (transcript: string) => {
     if (!transcript.trim()) return;
 
     try {
-      setCallState(prev => ({
+      setCallState((prev) => ({
         ...prev,
         isListening: false,
         currentTranscript: transcript,
@@ -155,17 +177,11 @@ export default function CallScreen() {
         timestamp: Date.now(),
       });
 
-      // Get mood-adjusted TTS parameters
       const ttsParams = getTTSParametersForMood(moodState.currentMood);
 
-      // Speak response
-      await Speech.speak(response.message, {
-        language: 'en-US',
-        rate: ttsParams.rate,
-        pitch: ttsParams.pitch,
-      });
+      await playSpeechWithKokoro(response.message, ttsParams.rate);
 
-      setCallState(prev => ({
+      setCallState((prev) => ({
         ...prev,
         allyResponse: response.message,
       }));
@@ -176,20 +192,30 @@ export default function CallScreen() {
   };
 
   const toggleMute = () => {
-    setCallState(prev => ({
+    const newMuted = !callState.isMuted;
+    setCallState((prev) => ({
       ...prev,
-      isMuted: !prev.isMuted,
+      isMuted: newMuted,
     }));
-    
-    if (callState.isMuted) {
-      Speech.resume?.();
+
+    const handle = speechPlaybackHandle.current;
+    if (!handle) {
+      return;
+    }
+
+    if (newMuted) {
+      handle.pause().catch((error) => {
+        console.error('Failed to pause Kokoro playback:', error);
+      });
     } else {
-      Speech.pause?.();
+      handle.resume().catch((error) => {
+        console.error('Failed to resume Kokoro playback:', error);
+      });
     }
   };
 
   const endCall = () => {
-    Speech.stop();
+    void stopCurrentSpeech();
     if (callDurationInterval.current) clearInterval(callDurationInterval.current);
     if (waveAnimationInterval.current) clearInterval(waveAnimationInterval.current);
     

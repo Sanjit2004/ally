@@ -5,9 +5,9 @@ import { FLOATING_TAB_BAR_OFFSET } from '@/constants/layout';
 import { Colors, PrimaryColors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useUserProfileStore } from '@/store/userProfileStore';
-import { guessVisemeFromText, moodToReactionIntensity, REST_VISEME } from '@/utils/lipsync';
+import { moodToReactionIntensity, REST_VISEME } from '@/utils/lipsync';
+import { playKokoroSpeech, type SpeechPlaybackHandle } from '@/utils/ttsPlayer';
 import { router } from 'expo-router';
-import * as Speech from 'expo-speech';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -33,10 +33,6 @@ type AvatarConfig = {
   name?: string;
   glb: string;
   preview?: string;
-};
-
-type SpeechBoundaryEvent = {
-  charIndex?: number;
 };
 
 const DEFAULT_AVATAR_CONFIG: AvatarConfig[] = [
@@ -212,9 +208,13 @@ export default function AvatarScreen() {
     }
   }, [viewerReady, reactionIntensity, sendToViewer]);
 
+  const speechHandleRef = useRef<SpeechPlaybackHandle | null>(null);
+
   useEffect(() => {
     return () => {
-      Speech.stop();
+      const handle = speechHandleRef.current;
+      speechHandleRef.current = null;
+      handle?.stop().catch(() => undefined);
       sendToViewer({ type: 'stopLipSync' });
       sendToViewer({ type: 'viseme', ...REST_VISEME });
     };
@@ -235,6 +235,7 @@ export default function AvatarScreen() {
 
   const finishVoiceTest = useCallback(() => {
     setIsTestingVoice(false);
+    speechHandleRef.current = null;
     sendToViewer({ type: 'stopLipSync' });
     sendToViewer({ type: 'viseme', ...REST_VISEME });
     sendToViewer({ type: 'reaction', preset: 'assistantComplete', intensity: reactionIntensity });
@@ -242,50 +243,37 @@ export default function AvatarScreen() {
 
   const handleToggleTestVoice = async () => {
     if (isTestingVoice) {
-      Speech.stop();
+      const handle = speechHandleRef.current;
+      speechHandleRef.current = null;
+      await handle?.stop().catch(() => undefined);
       finishVoiceTest();
       return;
     }
 
     try {
       const sampleLine = "Hey, it's Ally. I'm here and ready whenever you want to talk.";
-      console.log('Starting voice test...');
+      console.log('Starting Kokoro voice test...');
       setIsTestingVoice(true);
       sendToViewer({ type: 'startLipSync', intensity: reactionIntensity });
 
-      // Check if speech is available
-      const voices = await Speech.getAvailableVoicesAsync();
-      console.log('Available voices:', voices.length);
-
-      Speech.speak(sampleLine, {
-        language: 'en-US',
-        rate: 0.95,
-        pitch: 1.05,
-        onStart: () => {
-          console.log('Speech started');
-        },
-        onBoundary: (event?: SpeechBoundaryEvent) => {
-          const charIndex = event?.charIndex ?? -1;
-          const viseme = guessVisemeFromText(sampleLine, charIndex);
-          if (viseme) {
-            sendToViewer({ type: 'viseme', ...viseme });
-          }
-        },
-        onDone: () => {
-          console.log('Speech completed');
-          finishVoiceTest();
-        },
-        onStopped: () => {
-          console.log('Speech stopped');
-          finishVoiceTest();
+      speechHandleRef.current = await playKokoroSpeech({
+        text: sampleLine,
+        voice: 'af_bella',
+        speed: 1,
+        onViseme: (viseme) => {
+          sendToViewer({ type: 'viseme', ...viseme });
         },
         onError: (error) => {
-          console.error('Speech error:', error);
+          console.error('Kokoro playback error:', error);
+          finishVoiceTest();
+        },
+        onFinish: () => {
+          speechHandleRef.current = null;
           finishVoiceTest();
         },
       });
     } catch (error) {
-      console.error('Error in voice test:', error);
+      console.error('Error in Kokoro voice test:', error);
       finishVoiceTest();
     }
   };
