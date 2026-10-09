@@ -1,11 +1,8 @@
 {
   "name": "ally",
   "version": "1.0.0",
-  "description": "This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).",
+  "description": "Express API for Ally: chat with memory and text-to-speech via OpenAI.",
   "main": "index.js",
-  "directories": {
-    "doc": "docs"
-  },
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "build": "tsc",
@@ -14,16 +11,16 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Adnanfaz/Ally.git"
+    "url": "git+https://github.com/Sanjit2004/ally.git"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "type": "commonjs",
   "bugs": {
-    "url": "https://github.com/Adnanfaz/Ally/issues"
+    "url": "https://github.com/Sanjit2004/ally/issues"
   },
-  "homepage": "https://github.com/Adnanfaz/Ally#readme",
+  "homepage": "https://github.com/Sanjit2004/ally#readme",
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",

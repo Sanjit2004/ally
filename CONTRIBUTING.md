@@ -4,14 +4,14 @@ This document outlines the standard workflow and collaboration practices for con
 
 ## 1. Branching Workflow
 
-* **master**: Production-ready, always stable, no direct commits.
+* **main**: Production-ready, always stable, no direct commits.
 * **Feature branches** follow these naming conventions:
 
   * `ui/<feature-name>` for frontend work.
   * `backend/<feature-name>` for backend features.
   * `model/<feature-name>` for ML training, inference, or data work.
   * `chore/<task-name>` for cleanup, restructuring, or maintenance tasks.
-* Always base new branches off `master`.
+* Always base new branches off `main`.
 
 ## 2. Pull Requests (PRs)
 
