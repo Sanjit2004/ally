@@ -43,8 +43,8 @@ const FEATURES: Feature[] = [
 const BENEFITS: Feature[] = [
   {
     icon: 'lock.fill',
-    title: 'Privacy First',
-    description: 'Your conversations stay encrypted and secure.',
+    title: 'Stays on Your Phone',
+    description: 'Your chat history and memories are saved on your device.',
   },
   {
     icon: 'sparkle.magnifyingglass',
@@ -303,7 +303,7 @@ export default function GetStartedScreen() {
               { color: colors.text + '99' },
             ]}
           >
-            Join thousands of users building healthier habits with Ally.
+            Start a conversation whenever you need someone to listen.
           </Text>
 
           <TouchableOpacity
@@ -318,7 +318,7 @@ export default function GetStartedScreen() {
             <IconSymbol name="arrow.right" size={18} color="#ffffff" />
           </TouchableOpacity>
 
-          <Text style={[styles.footerText, { color: colors.text + '66' }]}>By continuing, you agree to our Terms of Service.</Text>
+          <Text style={[styles.footerText, { color: colors.text + '66' }]}>Ally is not a substitute for professional mental health care.</Text>
         </View>
       </View>
     </ScrollView>
